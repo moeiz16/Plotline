@@ -1,0 +1,54 @@
+# ── Data (downloaded rasters, caches, local databases) ──
+data/*
+!data/.gitkeep
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.tif
+*.zip
+
+# ── Local tools (Temporal CLI etc.) ──
+.tools/
+
+# ── Secrets ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# ── ML (checkpoints stay local; the exported encoder.npz < 20 MB is committed) ──
+ml/artifacts/*.pt
+
+# ── Node / Next.js ──
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# ── Eval reports ──
+eval/reports/*
+!eval/reports/.gitkeep
+
+# ── OS / editors ──
+.DS_Store
+.idea/
+.vscode/*
+*.swp
