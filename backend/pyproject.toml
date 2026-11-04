@@ -90,6 +90,7 @@ ignore = ["S101", "B008", "RUF012", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*.py" = ["E501"]
+"app/evidence/pack.py" = ["E501"]  # HTML/CSS template strings
 "tests/**/*.py" = ["S105", "S106", "S311"]
 
 [tool.mypy]

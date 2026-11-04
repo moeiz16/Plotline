@@ -6,6 +6,7 @@ Add new settings to the relevant section; never rename existing ones.
 
 from __future__ import annotations
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -40,10 +41,13 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = 7
     password_min_length: int = 12
     cookie_secure: bool = False
+    cookie_domain: str | None = None
     trusted_proxies: list[str] = Field(default_factory=lambda: ["127.0.0.1", "::1"])
     rate_limit_per_minute: int = 240
     auth_rate_limit_per_minute: int = 10
+    portal_rate_limit_per_minute: int = 60
     portal_link_ttl_days: int = 30
+    max_upload_bytes: int = 5 * 1024 * 1024
     invitation_ttl_days: int = 7
 
     # ── Database ───────────────────────────────────────────────────────────
@@ -57,6 +61,7 @@ class Settings(BaseSettings):
     temporal_worker_inline: bool = True  # run the worker inside the API process (saves memory locally)
     # Demo time scale: 1 campaign "day" lasts this many seconds of wall time (86400 = real time).
     campaign_day_seconds: int = 86_400
+    temporal_connect_timeout_s: float = 2.0
 
     # ── Earth observation & change signal (workstream B) ──────────────────
     data_dir: Path = REPO_ROOT / "data"
@@ -73,6 +78,9 @@ class Settings(BaseSettings):
 
     # ── Compliance ─────────────────────────────────────────────────────────
     evidence_retention_years: int = 5
+    # EUDR application dates (Regulation (EU) 2023/1115 as amended by 2025/2650).
+    deadline_large: date = date(2026, 12, 30)
+    deadline_sme: date = date(2027, 6, 30)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

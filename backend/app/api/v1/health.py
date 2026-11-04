@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Response
+from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from sqlalchemy import text
 
 from app.core.config import get_settings
 
@@ -16,9 +18,25 @@ async def health() -> dict:
 
 
 @router.get("/health/ready")
-async def ready() -> dict:
+async def ready() -> Response:
+    from app.db.session import get_engine
+    from app.workflows import client as wf_client
+
     s = get_settings()
-    return {"status": "ok", "database": "sqlite" if s.is_sqlite else "postgresql", "eoSource": s.eo_source}
+    db_ok = True
+    try:
+        async with get_engine().connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+    body = {
+        "status": "ok" if db_ok else "degraded",
+        "database": "sqlite" if s.is_sqlite else "postgresql",
+        "databaseOk": db_ok,
+        "eoSource": s.eo_source,
+        "workflowEngine": "online" if wf_client.is_online() else "offline",
+    }
+    return JSONResponse(body, status_code=200 if db_ok else 503)
 
 
 @router.get("/metrics", include_in_schema=False)
