@@ -24,7 +24,6 @@ plot's 2020 land cover class (forest vs non-forest).
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -38,6 +37,7 @@ from plotline_ml.train import ARTIFACTS, HELD_OUT, normalise
 POS_LOSS = 0.05
 MIN_FOREST = 0.30
 MIN_CLEAR = 0.90
+MAX_FALSE_ALARM = 0.10
 
 
 def _ndvi(x: np.ndarray) -> np.ndarray:
@@ -61,7 +61,7 @@ def _random_init_scores(ps: PatchSet, band_mean: np.ndarray, band_std: np.ndarra
 
 
 def _metrics(y: np.ndarray, score: np.ndarray, rng: np.random.Generator) -> dict:
-    out: dict = {"n": int(len(y)), "positives": int(y.sum())}
+    out: dict = {"n": len(y), "positives": int(y.sum())}
     if y.min() == y.max():
         return out
     out["roc_auc"] = round(float(roc_auc_score(y, score)), 4)
@@ -86,8 +86,19 @@ def _metrics(y: np.ndarray, score: np.ndarray, rng: np.random.Generator) -> dict
         precision=round(prec, 4),
         recall=round(rec, 4),
         f1=round(2 * prec * rec / max(prec + rec, 1e-9), 4),
-        test_n=int(len(test)),
+        test_n=len(test),
     )
+    # Operating point for review routing: at most 10 % of loss-free forest plots flagged (calibration half)
+    thr10 = float(np.quantile(score[cal][y[cal] == 0], 1 - MAX_FALSE_ALARM))
+    pred10 = score[test] >= thr10
+    tp10 = int((pred10 & (y[test] == 1)).sum())
+    fp10 = int((pred10 & (y[test] == 0)).sum())
+    out["at_10pct_false_alarms"] = {
+        "threshold": round(thr10, 5),
+        "precision": round(tp10 / max(tp10 + fp10, 1), 4),
+        "recall": round(tp10 / max(int((y[test] == 1).sum()), 1), 4),
+        "false_alarm_rate": round(fp10 / max(int((y[test] == 0).sum()), 1), 4),
+    }
     return out
 
 
@@ -109,8 +120,10 @@ def main() -> None:
     pos = eligible & (ps.loss_after >= POS_LOSS)
     neg = eligible & (ps.loss_after == 0)
     use = pos | neg
-    print(f"plots: {len(ps)}, cloud-free: {ok.sum()}, forest-2020 eligible: {eligible.sum()}, "
-          f"positives: {pos.sum()}, negatives: {neg.sum()}, ambiguous: {(eligible & ~use).sum()}")
+    print(
+        f"plots: {len(ps)}, cloud-free: {ok.sum()}, forest-2020 eligible: {eligible.sum()}, "
+        f"positives: {pos.sum()}, negatives: {neg.sum()}, ambiguous: {(eligible & ~use).sum()}"
+    )
 
     e_base = embed(weights, ps.baseline)
     e_cur = embed(weights, ps.current)
@@ -128,7 +141,7 @@ def main() -> None:
             "eligibility": f"JRC forest share >= {MIN_FOREST:.0%}, both composites >= {MIN_CLEAR:.0%} clear",
         },
         "counts": {
-            "plots": int(len(ps)),
+            "plots": len(ps),
             "eligible": int(eligible.sum()),
             "positives": int(pos.sum()),
             "negatives": int(neg.sum()),
@@ -143,7 +156,9 @@ def main() -> None:
     held = np.isin(ps.region, HELD_OUT)
     for name, s in scores.items():
         report["all_regions"][name] = _metrics(y_all[use], s[use], np.random.default_rng(42))
-        report["held_out_regions"][name] = _metrics(y_all[use & held], s[use & held], np.random.default_rng(42))
+        report["held_out_regions"][name] = _metrics(
+            y_all[use & held], s[use & held], np.random.default_rng(42)
+        )
     for region in sorted(set(ps.region)):
         m = use & (ps.region == region)
         if m.sum() and 0 < y_all[m].sum() < m.sum():
@@ -155,12 +170,50 @@ def main() -> None:
         "lejepa": round(_similar_precision(e_base[ok], forest_cls[ok]), 4),
         "chance": round(float(max(forest_cls[ok].mean(), 1 - forest_cls[ok].mean())), 4),
     }
-    # the operating point the API uses (calibrated on all regions)
-    report["api_threshold"] = report["all_regions"]["lejepa"].get("threshold")
+    # The operating point the API uses (calibrated on all regions): the land-change signal routes plots to a
+    # reviewer, so it is set for at most 10 % false alarms on loss-free forest plots rather than for best F1.
+    report["api_threshold"] = (
+        report["all_regions"]["lejepa"].get("at_10pct_false_alarms", {}).get("threshold")
+    )
+    report["api_threshold_rule"] = (
+        "10 % false alarms on loss-free 2020-forest plots (all regions, calibration half)"
+    )
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     (ARTIFACTS / "eval.json").write_text(json.dumps(report, indent=2))
     (ARTIFACTS / "EVAL.md").write_text(_markdown(report))
     print(_markdown(report))
+
+
+def _reading(r: dict) -> list[str]:
+    """A plain summary of what the numbers say, generated from them (so it never contradicts the tables)."""
+    held, allr = r["held_out_regions"], r["all_regions"]
+    best = max(("ndvi_drop", "nbr_drop"), key=lambda k: held[k].get("roc_auc", 0))
+    best_all = max(("ndvi_drop", "nbr_drop"), key=lambda k: allr[k].get("roc_auc", 0))
+    op = allr["lejepa"].get("at_10pct_false_alarms", {})
+    beats_held = held["lejepa"].get("roc_auc", 0) > held[best].get("roc_auc", 0)
+    beats_all = allr["lejepa"].get("roc_auc", 0) > allr[best_all].get("roc_auc", 0)
+    ssl_note = (
+        "Self-supervised training adds over the same untrained architecture."
+        if held["lejepa"].get("roc_auc", 0) > held["random_init"].get("roc_auc", 0)
+        else "Self-supervised training does not beat the untrained architecture here."
+    )
+    return [
+        "## Reading the numbers",
+        "",
+        f"- On the regions held out of training the LeJEPA change score reaches ROC-AUC "
+        f"{held['lejepa'].get('roc_auc')} ({'above' if beats_held else 'below'} the best spectral index, "
+        f"{best} {held[best].get('roc_auc')}; random-init encoder "
+        f"{held['random_init'].get('roc_auc')}). {ssl_note}",
+        f"- Across all regions it reaches {allr['lejepa'].get('roc_auc')}, "
+        f"{'above' if beats_all else 'below'} {best_all} ({allr[best_all].get('roc_auc')}): at demo scale "
+        "(9 landscapes, 1,500 CPU steps) the score is not calibrated across landscapes.",
+        f"- At the review operating point (at most 10 % false alarms) it recovers {op.get('recall')} of loss "
+        f"plots across all regions with precision {op.get('precision')}. That is why the signal only routes "
+        "plots to a reviewer and never decides a verdict; the official forest datasets do.",
+        "- Held-out positives are the majority class (base rate above 50 %), so held-out precision and F1 "
+        "are optimistic; ROC-AUC is the fairer comparison.",
+        "",
+    ]
 
 
 def _markdown(r: dict) -> str:
@@ -174,22 +227,61 @@ def _markdown(r: dict) -> str:
         f"{r['counts']['positives']} · negatives: {r['counts']['negatives']} · ambiguous (excluded): "
         f"{r['counts']['ambiguous_excluded']}",
         "",
+        *_reading(r),
     ]
-    for scope, title in (("all_regions", "All regions"), ("held_out_regions", "Held-out regions (never seen in training)")):
-        lines += [f"## {title}", "", "| Score | ROC-AUC | Avg. precision | Precision | Recall | F1 | n (pos) |", "|---|---|---|---|---|---|---|"]
+    for scope, title in (
+        ("all_regions", "All regions"),
+        ("held_out_regions", "Held-out regions (never seen in training)"),
+    ):
+        lines += [
+            f"## {title}",
+            "",
+            "| Score | ROC-AUC | Avg. precision | Precision | Recall | F1 | n (pos) |",
+            "|---|---|---|---|---|---|---|",
+        ]
         for name, m in r[scope].items():
             lines.append(
-                f"| {name} | {m.get('roc_auc', '-')} | {m.get('average_precision', '-')} | {m.get('precision', '-')} | "
-                f"{m.get('recall', '-')} | {m.get('f1', '-')} | {m['n']} ({m['positives']}) |"
+                f"| {name} | {m.get('roc_auc', '-')} | {m.get('average_precision', '-')} | "
+                f"{m.get('precision', '-')} | {m.get('recall', '-')} | {m.get('f1', '-')} | "
+                f"{m['n']} ({m['positives']}) |"
             )
         lines.append("")
-    lines += ["## ROC-AUC per region", "", "| Region | LeJEPA | Random init | NDVI drop | NBR drop | n (pos) |", "|---|---|---|---|---|---|"]
+        lines += [
+            "At the review operating point (threshold set for at most 10 % false alarms on loss-free plots):",
+            "",
+            "| Score | Threshold | Precision | Recall | False-alarm rate |",
+            "|---|---|---|---|---|",
+        ]
+        for name, m in r[scope].items():
+            op = m.get("at_10pct_false_alarms")
+            if op:
+                lines.append(
+                    f"| {name} | {op['threshold']} | {op['precision']} | {op['recall']} | "
+                    f"{op['false_alarm_rate']} |"
+                )
+        lines.append("")
+    lines += [
+        "## ROC-AUC per region",
+        "",
+        "| Region | LeJEPA | Random init | NDVI drop | NBR drop | n (pos) |",
+        "|---|---|---|---|---|---|",
+    ]
     for region, m in r["per_region_auc"].items():
         lines.append(
-            f"| {region} | {m['lejepa']} | {m['random_init']} | {m['ndvi_drop']} | {m['nbr_drop']} | {m['n']} ({m['positives']}) |"
+            f"| {region} | {m['lejepa']} | {m['random_init']} | {m['ndvi_drop']} | {m['nbr_drop']} | "
+            f"{m['n']} ({m['positives']}) |"
         )
+    lines += [
+        "",
+        f"API operating threshold: {r['api_threshold']} (cosine distance; {r['api_threshold_rule']}).",
+    ]
     sp = r["similar_plots_precision_at_5"]
-    lines += ["", f"Similar-plot search precision@5 (same 2020 land cover): {sp['lejepa']} (majority-class chance {sp['chance']}).", ""]
+    lines += [
+        "",
+        f"Similar-plot search precision@5 (same 2020 land cover): {sp['lejepa']} "
+        f"(majority-class chance {sp['chance']}).",
+        "",
+    ]
     return "\n".join(lines)
 
 

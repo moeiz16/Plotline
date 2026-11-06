@@ -39,14 +39,18 @@ def fold(enc: TinyEncoder) -> dict[str, np.ndarray]:
 
 
 def main() -> None:
-    ck = torch.load(CHECKPOINT, weights_only=False)
+    ck = torch.load(CHECKPOINT, weights_only=False, map_location="cpu")
     enc = TinyEncoder(in_ch=len(ck["band_mean"]))
     enc.load_state_dict(ck["encoder"])
     enc.eval()
     arrays = fold(enc)
     meta = {
         "version": ENCODER_VERSION,
-        "architecture": {"channels": list(CHANNELS), "strides": list(STRIDES), "embed_dim": enc.head.out_features},
+        "architecture": {
+            "channels": list(CHANNELS),
+            "strides": list(STRIDES),
+            "embed_dim": enc.head.out_features,
+        },
         "parameters": count_params(enc),
         "bands": ["B02", "B03", "B04", "B08", "B11"],
         "patch_px": 32,
@@ -75,7 +79,10 @@ def main() -> None:
     got = embed(weights, x)
     err = float(np.abs(got - ref).max())
     np.savez_compressed(ARTIFACTS / "reference.npz", inputs=x, embeddings=ref)
-    print(f"exported {path} ({path.stat().st_size / 1024:.0f} KB, sha256 {weights.sha256[:12]}), max |numpy - torch| = {err:.2e}")
+    print(
+        f"exported {path} ({path.stat().st_size / 1024:.0f} KB, sha256 {weights.sha256[:12]}), "
+        f"max |numpy - torch| = {err:.2e}"
+    )
     if err > 1e-3:
         raise SystemExit("NumPy forward pass does not match PyTorch")
 

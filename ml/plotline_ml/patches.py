@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from plotline_ml.regions import PATCH_PX, REGIONS
+from plotline_ml.regions import ALL_REGIONS, PATCH_PX
 
 ROOT = Path(__file__).resolve().parents[2]
 REGION_DIR = ROOT / "data" / "eo" / "regions"
@@ -53,7 +53,7 @@ def _tile(a: np.ndarray) -> np.ndarray:
 
 def load_patches(region_keys: list[str] | None = None) -> PatchSet:
     parts: dict[str, list[np.ndarray]] = {k: [] for k in PatchSet.__dataclass_fields__}
-    for region in REGIONS:
+    for region in ALL_REGIONS:  # whichever regions have been fetched
         if region_keys and region.key not in region_keys:
             continue
         path = REGION_DIR / f"{region.key}.npz"

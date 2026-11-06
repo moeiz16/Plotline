@@ -39,10 +39,10 @@ from plotline_ml.regions import (
     HANSEN_VERSION,
     JRC_GFC2020_COG,
     JRC_VERSION,
-    REGIONS,
     STAC_URL,
     WINDOW_PX,
     Region,
+    regions_for,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -108,7 +108,12 @@ def _read_asset(href: str, bounds: tuple[float, float, float, float], resampling
     with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
         window = from_bounds(*bounds, src.transform)
         return src.read(
-            1, window=window, out_shape=(WINDOW_PX, WINDOW_PX), resampling=resampling, boundless=True, fill_value=0
+            1,
+            window=window,
+            out_shape=(WINDOW_PX, WINDOW_PX),
+            resampling=resampling,
+            boundless=True,
+            fill_value=0,
         )
 
 
@@ -148,7 +153,9 @@ def _composite(items: list, bounds: tuple[float, float, float, float]) -> tuple[
     # pixels at a swath edge (no data in any band) or with a bright blue band are not clear
     clear &= (stack > 0).all(axis=1) & (stack[:, 0] < CLOUD_BLUE)
     # drop hazy scenes: median blue over clear pixels well above the clearest scene's
-    blue = np.array([np.median(stack[i, 0][clear[i]]) if clear[i].mean() > 0.05 else np.inf for i in range(len(items))])
+    blue = np.array(
+        [np.median(stack[i, 0][clear[i]]) if clear[i].mean() > 0.05 else np.inf for i in range(len(items))]
+    )
     if np.isfinite(blue).any():
         ref = np.nanmin(blue[np.isfinite(blue)])
         for i in range(len(items)):
@@ -246,10 +253,11 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--regions", default="", help="comma-separated region keys (default: all)")
     ap.add_argument("--scenes", type=int, default=8, help="scenes per epoch for the clear-sky composite")
+    ap.add_argument("--set", default="demo", choices=["demo", "full"], help="region set (full = GPU scale)")
     args = ap.parse_args()
     wanted = {k for k in args.regions.split(",") if k}
     catalog = pystac_client.Client.open(STAC_URL, modifier=planetary_computer.sign_inplace)
-    for region in REGIONS:
+    for region in regions_for(args.set):
         if wanted and region.key not in wanted:
             continue
         try:

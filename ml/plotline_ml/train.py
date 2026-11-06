@@ -33,13 +33,15 @@ from plotline_ml.patches import load_patches
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "ml" / "artifacts"
 CHECKPOINT = ROOT / "data" / "ml" / "encoder.pt"
-HELD_OUT = ("pe_madre_de_dios", "ci_soubre")
+# Two regions never seen in training, used for the held-out evaluation. ci_soubre is not a candidate: the
+# JRC GFC2020 map shows no forest there, so it has no eligible evaluation plots.
+HELD_OUT = ("pe_madre_de_dios", "gh_western_north")
 HAZE_PROFILE = torch.tensor([1.0, 0.8, 0.6, 0.3, 0.15])
 
 
 def augment(x: torch.Tensor, g: torch.Generator) -> torch.Tensor:
     """x: (B, C, 32, 32) reflectance -> one augmented view, same shape."""
-    b = x.shape[0]
+    b, dev = x.shape[0], x.device  # random draws stay on the CPU generator (same stream on any device)
     scale = torch.empty(b).uniform_(0.55, 1.0, generator=g)
     tx = (torch.rand(b, generator=g) * 2 - 1) * (1 - scale)
     ty = (torch.rand(b, generator=g) * 2 - 1) * (1 - scale)
@@ -48,15 +50,18 @@ def augment(x: torch.Tensor, g: torch.Generator) -> torch.Tensor:
     cos, sin = torch.cos(k) * scale, torch.sin(k) * scale
     theta = torch.stack(
         [torch.stack([cos * flip, -sin, tx], 1), torch.stack([sin * flip, cos, ty], 1)], 1
-    )  # (B, 2, 3)
+    ).to(dev)  # (B, 2, 3)
     grid = F.affine_grid(theta, list(x.shape), align_corners=False)
     v = F.grid_sample(x, grid, mode="bilinear", padding_mode="reflection", align_corners=False)
-    gain = torch.empty(b, x.shape[1], 1, 1).uniform_(0.88, 1.12, generator=g)
-    haze = torch.empty(b, 1, 1, 1).uniform_(0.0, 0.035, generator=g) * HAZE_PROFILE[: x.shape[1]].view(1, -1, 1, 1)
-    contrast = torch.empty(b, 1, 1, 1).uniform_(0.0, 0.2, generator=g)
+    gain = torch.empty(b, x.shape[1], 1, 1).uniform_(0.88, 1.12, generator=g).to(dev)
+    haze = (
+        torch.empty(b, 1, 1, 1).uniform_(0.0, 0.035, generator=g)
+        * HAZE_PROFILE[: x.shape[1]].view(1, -1, 1, 1)
+    ).to(dev)
+    contrast = torch.empty(b, 1, 1, 1).uniform_(0.0, 0.2, generator=g).to(dev)
     mean = v.mean(dim=(2, 3), keepdim=True)
     v = (v * (1 - contrast) + mean * contrast) * gain + haze
-    return v + torch.randn(v.shape, generator=g) * 0.004
+    return v + torch.randn(v.shape, generator=g).to(dev) * 0.004
 
 
 def normalise(x: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
@@ -73,7 +78,13 @@ def main() -> None:
     ap.add_argument("--slices", type=int, default=256)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--device", default="auto", help="cpu, cuda or auto (CUDA when available)")
     args = ap.parse_args()
+    device = torch.device(
+        "cuda"
+        if args.device == "auto" and torch.cuda.is_available()
+        else ("cpu" if args.device == "auto" else args.device)
+    )
 
     torch.manual_seed(args.seed)
     torch.set_num_threads(args.threads)
@@ -90,11 +101,12 @@ def main() -> None:
     band_std = data.std(dim=(0, 2, 3)) + 1e-6
     print(f"training images: {len(data)} from {len(set(ps.region[train_mask]))} regions")
 
-    enc, proj = TinyEncoder(in_ch=data.shape[1]), Projector()
+    data, band_mean, band_std = data.to(device), band_mean.to(device), band_std.to(device)
+    enc, proj = TinyEncoder(in_ch=data.shape[1]).to(device), Projector().to(device)
     print(f"encoder parameters: {count_params(enc):,} (+ projector {count_params(proj):,}, training only)")
     sigreg = lejepa.multivariate.SlicingUnivariateTest(
         univariate_test=lejepa.univariate.EppsPulley(n_points=17), num_slices=args.slices
-    )
+    ).to(device)
     params = list(enc.parameters()) + list(proj.parameters())
     opt = torch.optim.AdamW(params, lr=args.lr, weight_decay=5e-4)
     warmup = max(args.steps // 15, 1)
@@ -102,7 +114,9 @@ def main() -> None:
         opt,
         [
             torch.optim.lr_scheduler.LinearLR(opt, start_factor=0.01, total_iters=warmup),
-            torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.steps - warmup, eta_min=args.lr / 1000),
+            torch.optim.lr_scheduler.CosineAnnealingLR(
+                opt, T_max=args.steps - warmup, eta_min=args.lr / 1000
+            ),
         ],
         milestones=[warmup],
     )
@@ -112,7 +126,7 @@ def main() -> None:
     proj.train()
     for step in range(1, args.steps + 1):
         idx = torch.randint(0, len(data), (args.batch,), generator=g)
-        x = data[idx]
+        x = data[idx.to(device)]
         views = torch.cat([normalise(augment(x, g), band_mean, band_std) for _ in range(args.views)])
         z = proj(enc(views)).view(args.views, args.batch, -1)  # (V, B, D)
         inv = (z.mean(0, keepdim=True) - z).square().mean()
@@ -136,9 +150,9 @@ def main() -> None:
     CHECKPOINT.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
-            "encoder": enc.state_dict(),
-            "band_mean": band_mean,
-            "band_std": band_std,
+            "encoder": {k: v.cpu() for k, v in enc.state_dict().items()},
+            "band_mean": band_mean.cpu(),
+            "band_std": band_std.cpu(),
             "args": vars(args),
             "held_out": HELD_OUT,
             "train_images": len(data),
@@ -155,7 +169,7 @@ def main() -> None:
                 "train_images": len(data),
                 "encoder_parameters": count_params(enc),
                 "train_seconds": round(time.time() - t0, 1),
-                "device": "cpu",
+                "device": str(device),
                 "curve": log,
             },
             indent=2,

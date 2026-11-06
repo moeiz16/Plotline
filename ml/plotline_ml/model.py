@@ -22,7 +22,11 @@ class TinyEncoder(nn.Module):
         layers: list[nn.Module] = []
         c = in_ch
         for out, stride in zip(CHANNELS, STRIDES, strict=True):
-            layers += [nn.Conv2d(c, out, 3, stride, 1, bias=False), nn.BatchNorm2d(out), nn.ReLU(inplace=True)]
+            layers += [
+                nn.Conv2d(c, out, 3, stride, 1, bias=False),
+                nn.BatchNorm2d(out),
+                nn.ReLU(inplace=True),
+            ]
             c = out
         self.features = nn.Sequential(*layers)
         self.head = nn.Linear(c, embed_dim)
