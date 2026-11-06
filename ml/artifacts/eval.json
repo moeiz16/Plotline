@@ -1,0 +1,277 @@
+{
+  "labels": {
+    "source": "Hansen GFC-2025-v1.13 loss 2021-2025 within EU JRC GFC2020-V4 forest",
+    "positive_rule": "loss share >= 5% of a 10.24 ha plot",
+    "eligibility": "JRC forest share >= 30%, both composites >= 90% clear"
+  },
+  "counts": {
+    "plots": 9216,
+    "eligible": 3435,
+    "positives": 1467,
+    "negatives": 1518,
+    "ambiguous_excluded": 450
+  },
+  "encoder": {
+    "version": "plotline-lejepa-s2-v1",
+    "architecture": {
+      "channels": [
+        32,
+        64,
+        64,
+        128,
+        128,
+        128
+      ],
+      "strides": [
+        1,
+        2,
+        1,
+        2,
+        1,
+        2
+      ],
+      "embed_dim": 128
+    },
+    "parameters": 442976,
+    "bands": [
+      "B02",
+      "B03",
+      "B04",
+      "B08",
+      "B11"
+    ],
+    "patch_px": 32,
+    "gsd_m": 10,
+    "objective": "LeJEPA: (1-lambda)*invariance + lambda*SIGReg (Epps-Pulley, sliced)",
+    "train_args": {
+      "steps": 1500,
+      "batch": 128,
+      "views": 4,
+      "lamb": 0.05,
+      "lr": 0.002,
+      "slices": 256,
+      "seed": 0,
+      "threads": 4
+    },
+    "held_out_regions": [
+      "pe_madre_de_dios",
+      "gh_western_north"
+    ],
+    "train_images": 14202,
+    "train_seconds": 1326.3,
+    "exported_at": "2026-11-13T20:59:57+00:00"
+  },
+  "encoder_sha256": "df40afced6867df58dab215c9a9f812a84a5e7eac3cedfae78193df6d6ec2d53",
+  "all_regions": {
+    "lejepa": {
+      "n": 2985,
+      "positives": 1467,
+      "roc_auc": 0.6509,
+      "average_precision": 0.5641,
+      "threshold": 0.05546,
+      "precision": 0.5711,
+      "recall": 0.8978,
+      "f1": 0.6981,
+      "test_n": 1493,
+      "at_10pct_false_alarms": {
+        "threshold": 0.62134,
+        "precision": 0.5,
+        "recall": 0.0872,
+        "false_alarm_rate": 0.0843
+      }
+    },
+    "random_init": {
+      "n": 2985,
+      "positives": 1467,
+      "roc_auc": 0.5834,
+      "average_precision": 0.519,
+      "threshold": 1e-05,
+      "precision": 0.5447,
+      "recall": 0.9455,
+      "f1": 0.6912,
+      "test_n": 1493,
+      "at_10pct_false_alarms": {
+        "threshold": 0.00019,
+        "precision": 0.3985,
+        "recall": 0.0722,
+        "false_alarm_rate": 0.1054
+      }
+    },
+    "ndvi_drop": {
+      "n": 2985,
+      "positives": 1467,
+      "roc_auc": 0.7397,
+      "average_precision": 0.7109,
+      "threshold": 0.01116,
+      "precision": 0.6996,
+      "recall": 0.7425,
+      "f1": 0.7204,
+      "test_n": 1493,
+      "at_10pct_false_alarms": {
+        "threshold": 0.04066,
+        "precision": 0.769,
+        "recall": 0.4128,
+        "false_alarm_rate": 0.1199
+      }
+    },
+    "nbr_drop": {
+      "n": 2985,
+      "positives": 1467,
+      "roc_auc": 0.8128,
+      "average_precision": 0.7419,
+      "threshold": 0.01787,
+      "precision": 0.7349,
+      "recall": 0.827,
+      "f1": 0.7782,
+      "test_n": 1493,
+      "at_10pct_false_alarms": {
+        "threshold": 0.06345,
+        "precision": 0.7995,
+        "recall": 0.4837,
+        "false_alarm_rate": 0.1173
+      }
+    }
+  },
+  "held_out_regions": {
+    "lejepa": {
+      "n": 442,
+      "positives": 299,
+      "roc_auc": 0.8927,
+      "average_precision": 0.9348,
+      "threshold": 0.0643,
+      "precision": 0.8132,
+      "recall": 0.9867,
+      "f1": 0.8916,
+      "test_n": 222,
+      "at_10pct_false_alarms": {
+        "threshold": 0.4126,
+        "precision": 0.9123,
+        "recall": 0.6933,
+        "false_alarm_rate": 0.1389
+      }
+    },
+    "random_init": {
+      "n": 442,
+      "positives": 299,
+      "roc_auc": 0.7979,
+      "average_precision": 0.895,
+      "threshold": 1e-05,
+      "precision": 0.7095,
+      "recall": 0.9933,
+      "f1": 0.8278,
+      "test_n": 222,
+      "at_10pct_false_alarms": {
+        "threshold": 3e-05,
+        "precision": 0.8868,
+        "recall": 0.6267,
+        "false_alarm_rate": 0.1667
+      }
+    },
+    "ndvi_drop": {
+      "n": 442,
+      "positives": 299,
+      "roc_auc": 0.6503,
+      "average_precision": 0.8564,
+      "threshold": -0.11963,
+      "precision": 0.6728,
+      "recall": 0.9733,
+      "f1": 0.7956,
+      "test_n": 222,
+      "at_10pct_false_alarms": {
+        "threshold": 0.03765,
+        "precision": 0.8624,
+        "recall": 0.6267,
+        "false_alarm_rate": 0.2083
+      }
+    },
+    "nbr_drop": {
+      "n": 442,
+      "positives": 299,
+      "roc_auc": 0.6403,
+      "average_precision": 0.8481,
+      "threshold": -0.06913,
+      "precision": 0.6787,
+      "recall": 1.0,
+      "f1": 0.8086,
+      "test_n": 222,
+      "at_10pct_false_alarms": {
+        "threshold": 0.0539,
+        "precision": 0.86,
+        "recall": 0.5733,
+        "false_alarm_rate": 0.1944
+      }
+    }
+  },
+  "per_region_auc": {
+    "br_novo_progresso": {
+      "lejepa": 0.85,
+      "random_init": 0.871,
+      "ndvi_drop": 0.92,
+      "nbr_drop": 0.93,
+      "n": 762,
+      "positives": 512
+    },
+    "br_porto_velho": {
+      "lejepa": 0.74,
+      "random_init": 0.76,
+      "ndvi_drop": 0.741,
+      "nbr_drop": 0.734,
+      "n": 541,
+      "positives": 137
+    },
+    "ci_cavally": {
+      "lejepa": 0.774,
+      "random_init": 0.391,
+      "ndvi_drop": 0.806,
+      "nbr_drop": 0.83,
+      "n": 242,
+      "positives": 220
+    },
+    "gh_western_north": {
+      "lejepa": 0.716,
+      "random_init": 0.54,
+      "ndvi_drop": 0.387,
+      "nbr_drop": 0.431,
+      "n": 127,
+      "positives": 101
+    },
+    "id_east_kalimantan": {
+      "lejepa": 0.64,
+      "random_init": 0.649,
+      "ndvi_drop": 0.84,
+      "nbr_drop": 0.856,
+      "n": 735,
+      "positives": 135
+    },
+    "id_riau": {
+      "lejepa": 0.725,
+      "random_init": 0.652,
+      "ndvi_drop": 0.596,
+      "nbr_drop": 0.741,
+      "n": 54,
+      "positives": 40
+    },
+    "pe_madre_de_dios": {
+      "lejepa": 0.934,
+      "random_init": 0.887,
+      "ndvi_drop": 0.934,
+      "nbr_drop": 0.897,
+      "n": 315,
+      "positives": 198
+    },
+    "pe_san_martin": {
+      "lejepa": 0.599,
+      "random_init": 0.596,
+      "ndvi_drop": 0.627,
+      "nbr_drop": 0.624,
+      "n": 209,
+      "positives": 124
+    }
+  },
+  "similar_plots_precision_at_5": {
+    "lejepa": 0.8831,
+    "chance": 0.6423
+  },
+  "api_threshold": 0.62134,
+  "api_threshold_rule": "10 % false alarms on loss-free 2020-forest plots (all regions, calibration half)"
+}
