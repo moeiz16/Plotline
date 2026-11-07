@@ -33,7 +33,7 @@ BANDS = ("B02", "B03", "B04", "B08", "B11")
 CLEAR_SCL = (4, 5, 6)
 CLOUD_BLUE = 0.13
 SCENES = 5
-CACHE_VERSION = "live-v1"
+CACHE_VERSION = "live-v2"
 _GDAL_ENV = {
     "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
     "GDAL_HTTP_MAX_RETRY": "3",
@@ -57,26 +57,32 @@ def hansen_tile(lat: float, lon: float) -> str:
 
 
 def _read_warped(href: str, grid: Grid, resampling: str = "nearest") -> np.ndarray:
+    """Read the source window covering the grid (plus a margin) and reproject it onto the plot grid."""
     import rasterio
     from rasterio.enums import Resampling
-    from rasterio.vrt import WarpedVRT
+    from rasterio.warp import reproject, transform_bounds
+    from rasterio.windows import from_bounds
 
-    transform = rasterio.Affine(grid.pixel_m, 0, grid.x0, 0, -grid.pixel_m, grid.y1)
-    with (
-        rasterio.Env(**_GDAL_ENV),
-        rasterio.open(href) as src,
-        WarpedVRT(
-            src,
-            crs=grid.crs,
-            transform=transform,
-            width=grid.width,
-            height=grid.height,
-            resampling=getattr(Resampling, resampling),
-            src_nodata=src.nodata,
-            nodata=0,
-        ) as vrt,
-    ):
-        return vrt.read(1)
+    dst_transform = rasterio.Affine(grid.pixel_m, 0, grid.x0, 0, -grid.pixel_m, grid.y1)
+    x0, y0, x1, y1 = grid.bounds
+    pad = 4 * grid.pixel_m
+    with rasterio.Env(**_GDAL_ENV), rasterio.open(href) as src:
+        left, bottom, right, top = transform_bounds(grid.crs, src.crs, x0 - pad, y0 - pad, x1 + pad, y1 + pad)
+        window = from_bounds(left, bottom, right, top, src.transform).round_offsets().round_lengths()
+        data = src.read(1, window=window, boundless=True, fill_value=0)
+        src_transform = src.window_transform(window)
+        src_crs = src.crs
+    out = np.zeros((grid.height, grid.width), dtype=data.dtype)
+    reproject(
+        data,
+        out,
+        src_transform=src_transform,
+        src_crs=src_crs,
+        dst_transform=dst_transform,
+        dst_crs=grid.crs,
+        resampling=getattr(Resampling, resampling),
+    )
+    return out
 
 
 def _lonlat_bbox(grid: Grid) -> tuple[float, float, float, float]:
