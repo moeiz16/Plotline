@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import math
+import re
 import uuid
 from collections import OrderedDict
 from typing import Any
@@ -69,6 +69,21 @@ def effective_verdict(a: Assessment) -> str:
     return a.verdict
 
 
+def _change_signal_label(raw: str | None) -> str:
+    """User-facing name of the land-change signal version (the technical id stays in `datasetIds`)."""
+    if not raw or raw.startswith("not installed"):
+        return "Land-change signal not available"
+    match = re.search(r"-v(\d+(?:\.\d+)*)", raw)
+    return f"Land-change signal v{match.group(1)}" if match else "Land-change signal"
+
+
+def public_datasets(datasets: dict | None) -> dict:
+    out = dict(datasets or {})
+    if "changeModel" in out:
+        out["changeModel"] = _change_signal_label(out["changeModel"])
+    return out
+
+
 def assessment_out(a: Assessment) -> dict:
     m = a.metrics or {}
     review = None
@@ -85,6 +100,7 @@ def assessment_out(a: Assessment) -> dict:
         "forest2020Ha": m.get("forest2020Ha"),
         "forest2020Share": m.get("forest2020Share"),
         "lossAfter2020Ha": m.get("lossAfter2020Ha"),
+        "lossBefore2021Ha": m.get("lossBefore2021Ha"),
         "lossByYear": m.get("lossByYear") or {},
         "treeCover2000Pct": m.get("treeCover2000Pct"),
         "cloudFreeShare": m.get("cloudFreeShare"),
@@ -93,7 +109,8 @@ def assessment_out(a: Assessment) -> dict:
         "signalsAgree": m.get("signalsAgree"),
         "reviewRequired": bool(a.review_required) and not a.review,
         "review": review,
-        "datasets": a.datasets or {},
+        "datasets": public_datasets(a.datasets),
+        "datasetIds": dict(a.datasets or {}),
         "inputsHash": a.inputs_hash,
         "resultHash": a.result_hash,
     }
@@ -159,28 +176,12 @@ async def list_plots(db: AsyncSession, ctx: RequestContext, **filters: Any) -> l
     return [plot_item(p, name) for p, name in (await db.execute(_filtered(ctx, **filters))).all()]
 
 
-def circle_polygon(lon: float, lat: float, area_ha: float, n: int = 32) -> dict:
-    """A point plot drawn as a circle of its declared area (for maps)."""
-    r = math.sqrt(max(area_ha, 0.01) * 10_000 / math.pi)
-    dlat = r / 111_320
-    dlon = r / (111_320 * max(math.cos(math.radians(lat)), 1e-6))
-    ring = [
-        [
-            round(lon + dlon * math.cos(2 * math.pi * i / n), 6),
-            round(lat + dlat * math.sin(2 * math.pi * i / n), 6),
-        ]
-        for i in range(n)
-    ]
-    ring.append(ring[0])
-    return {"type": "Polygon", "coordinates": [ring]}
-
-
 async def plots_geojson(db: AsyncSession, ctx: RequestContext, **filters: Any) -> dict:
     features = []
     for p, name in (await db.execute(_filtered(ctx, **filters))).all():
         geom = p.geometry
         if p.kind == "point" or geom.get("type") == "Point":
-            geom = circle_polygon(p.centroid_lon, p.centroid_lat, p.declared_area_ha or p.area_ha)
+            geom = domain.as_polygon(geom, p.declared_area_ha or p.area_ha)
         features.append(
             {
                 "type": "Feature",
@@ -231,20 +232,23 @@ async def overlap_issues(
     geometry: dict,
     h3_parent: str | None,
     exclude: uuid.UUID | None = None,
+    area_ha: float | None = None,
 ) -> list[dict]:
     if not h3_parent:
         return []
-    stmt = select(Plot.id, Plot.reference, Plot.geometry, Plot.kind).where(
+    stmt = select(Plot.id, Plot.reference, Plot.geometry, Plot.declared_area_ha, Plot.area_ha).where(
         Plot.org_id == org_id, Plot.status == "active", Plot.h3_parent == h3_parent
     )
     if exclude:
         stmt = stmt.where(Plot.id != exclude)
     rows = (await db.execute(stmt)).all()
-    others = [(str(i), g) for i, _r, g, k in rows if k == "polygon" and g.get("type") != "Point"]
-    if not others or geometry.get("type") == "Point":
+    # Point plots take part as their footprint (a circle of the declared area).
+    others = [(str(i), domain.as_polygon(g, declared or area)) for i, _r, g, declared, area in rows]
+    if not others:
         return []
-    refs = {str(i): r for i, r, _g, _k in rows}
-    hits = await asyncio.to_thread(domain.find_overlaps, geometry, others, 0.01)
+    refs = {str(i): r for i, r, *_rest in rows}
+    footprint = domain.as_polygon(geometry, area_ha)
+    hits = await asyncio.to_thread(domain.find_overlaps, footprint, others, 0.01)
     return [
         {
             "code": "overlap",
@@ -278,7 +282,9 @@ async def validate_for_org(
     centroid = getattr(result, "centroid", None)
     if out["valid"] and out["normalized"] and centroid:
         _cell, parent = h3_parent_of(getattr(result, "h3_cell", None), centroid[0], centroid[1])
-        out["issues"] += await overlap_issues(db, org_id, out["normalized"], parent, exclude)
+        out["issues"] += await overlap_issues(
+            db, org_id, out["normalized"], parent, exclude, area_ha=declared_area_ha or out["areaHa"]
+        )
     return result, out
 
 

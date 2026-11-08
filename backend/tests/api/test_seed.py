@@ -115,3 +115,14 @@ async def test_seeded_supplier_user_and_idempotence(client) -> None:
     }
     async with session_scope() as db:
         assert await already_seeded(db)
+
+
+async def test_campaign_timeline_uses_readable_dates(client) -> None:
+    import re
+
+    await ensure_seeded()
+    await login(client)
+    cid = (await client.get("/api/v1/campaigns")).json()[0]["id"]
+    messages = [t["message"] for t in (await client.get(f"/api/v1/campaigns/{cid}")).json()["timeline"]]
+    assert not any(re.search(r"\d{4}-\d{2}-\d{2}", m) for m in messages)
+    assert any(re.search(r"due \d{1,2} [A-Z][a-z]{2} \d{4}", m) for m in messages)

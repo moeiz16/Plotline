@@ -59,6 +59,13 @@ def find_overlaps(
     return _overlaps(geometry, others, min_overlap_ha)
 
 
+def as_polygon(geometry: dict, area_ha: float | None) -> dict:
+    """Polygon footprint of a plot (points become a circle of their declared area)."""
+    from app.spatial.geometry import as_polygon as _as_polygon
+
+    return _as_polygon(geometry, area_ha)
+
+
 def country_name(code: str) -> str:
     try:
         from app.spatial.countries import country_name as _name

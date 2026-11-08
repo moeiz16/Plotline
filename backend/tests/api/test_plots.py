@@ -294,3 +294,28 @@ async def test_role_restrictions_on_plots(owner, make_client) -> None:
     await create_plot_from_demo(owner, other["id"], demo_by_scenario("compliant_agroforest")[0])
     assert [p["reference"] for p in (await supplier_user.get("/api/v1/plots")).json()] == ["A-1"]
     assert (await supplier_user.get("/api/v1/reviews")).status_code == 403
+
+
+async def test_point_plot_overlap_uses_its_footprint(owner) -> None:
+    sup = await create_supplier(owner)
+    dp = demo(CI_FARM)
+    await create_plot_from_demo(owner, sup["id"], dp)
+    lon, lat = dp.geometry["coordinates"][0][0]
+    inside = {"type": "Point", "coordinates": [round(lon + 0.0004, 6), round(lat - 0.0012, 6)]}
+    body = (
+        await owner.post(
+            "/api/v1/plots/validate", json={"geometry": inside, "country": "CI", "declaredAreaHa": 3}
+        )
+    ).json()
+    assert body["valid"] is True and body["kind"] == "point"
+    assert "overlap" in {i["code"] for i in body["issues"]}
+
+
+async def test_dataset_versions_use_plain_labels(owner) -> None:
+    sup = await create_supplier(owner)
+    plot = await create_plot_from_demo(owner, sup["id"], demo(CI_FARM))
+    a = plot["latestAssessment"]
+    assert a["datasets"]["changeModel"].startswith("Land-change signal")
+    assert "sha256" not in a["datasets"]["changeModel"]
+    assert a["datasetIds"]["changeModel"] != a["datasets"]["changeModel"]
+    assert "lossBefore2021Ha" in a

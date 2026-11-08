@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import RequestContext
 from app.core.errors import conflict, not_found, validation_error
+from app.core.text import human_date
 from app.db.base import utcnow
 from app.db.models.domain import Campaign, CampaignEvent, CampaignMember, Plot, Supplier
 from app.services import suppliers as supplier_svc
@@ -211,7 +212,7 @@ async def create_campaign(db: AsyncSession, ctx: RequestContext, data: dict) -> 
             )
         )
     add_event(
-        db, c, None, "started", f"Campaign started with {len(ids)} suppliers, due {c.due_date.isoformat()}."
+        db, c, None, "started", f"Campaign started with {len(ids)} suppliers, due {human_date(c.due_date)}."
     )
     await audit(
         db,

@@ -12,6 +12,7 @@ from temporalio import activity
 
 from app.core.events import publish
 from app.core.metrics import CAMPAIGN_EVENTS
+from app.core.text import human_date
 from app.db.base import utcnow
 from app.db.models.domain import Campaign, CampaignEvent, CampaignMember, Plot, Supplier
 from app.db.models.platform import Organization
@@ -126,7 +127,7 @@ async def request_evidence(ref: MemberRef) -> None:
             "requested",
             f"Evidence requested from {supplier.name}: plot locations "
             f"for {campaign.commodity.replace('_', ' ')} "
-            f"due {campaign.due_date.isoformat()}.",
+            f"due {human_date(campaign.due_date)}.",
             stage="requested",
         )
     await announce([update])
@@ -146,7 +147,7 @@ async def reminder_due(inp: ReminderIn) -> ReminderOut:
         member.reminders_sent = (member.reminders_sent or 0) + 1
         if overdue:
             msg = (
-                f"{supplier.name} is overdue (due {campaign.due_date.isoformat()}). "
+                f"{supplier.name} is overdue (due {human_date(campaign.due_date)}). "
                 f"Reminder {member.reminders_sent} sent."
             )
             update = add_event(db, campaign, member, "overdue", msg, stage="overdue", at=utcnow())

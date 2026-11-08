@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import RequestContext
 from app.core.permissions import permissions_for
 from app.core.security import hash_password
+from app.core.text import human_date
 from app.db.base import utcnow
 from app.db.models.domain import Campaign, CampaignEvent, CampaignMember, Plot, Product, Shipment, Supplier
 from app.db.models.platform import Membership, Organization, User
@@ -371,7 +372,7 @@ async def _seed_campaign(
             at=started,
             kind="started",
             message=f"Campaign started with {len(CAMPAIGN_STAGES)} suppliers, due "
-            f"{campaign.due_date.isoformat()}.",
+            f"{human_date(campaign.due_date)}.",
         )
     )
     for key, stage in CAMPAIGN_STAGES.items():
@@ -385,7 +386,7 @@ async def _seed_campaign(
             (
                 started,
                 "requested",
-                f"Evidence requested from {s.name}: plot locations due {campaign.due_date.isoformat()}.",
+                f"Evidence requested from {s.name}: plot locations due {human_date(campaign.due_date)}.",
             )
         ]
         if stage == "reminded":
