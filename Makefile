@@ -5,7 +5,8 @@ MLPY     := ml/.venv/bin/python
 NPM      := npm --prefix frontend
 TEMPORAL := .tools/temporal
 
-.PHONY: help setup setup-backend setup-frontend setup-ml tools dev api web temporal seed test test-backend \
+.PHONY: help setup setup-backend setup-frontend setup-ml tools dev api web temporal seed reset migrate worker \
+        test test-backend test-workflows \
         test-ml test-frontend lint typecheck eval ml-data train ml-eval clean
 
 help:            ## Show this help
@@ -46,10 +47,22 @@ dev:             ## Temporal + API + web together (Ctrl-C stops all)
 seed:            ## Create tables and seed the demo organisation (synthetic, offline)
 	cd backend && .venv/bin/python -m app.cli db init && .venv/bin/python -m app.cli seed demo
 
+reset:           ## Recreate the local SQLite database and seed it again
+	cd backend && .venv/bin/python -m app.cli db reset --yes && .venv/bin/python -m app.cli seed demo
+
+migrate:         ## Apply database migrations (Alembic)
+	cd backend && .venv/bin/python -m app.cli db upgrade
+
+worker:          ## Run the campaign worker outside the API (set TEMPORAL_WORKER_INLINE=false)
+	cd backend && .venv/bin/python -m app.cli worker
+
 test: test-backend test-frontend  ## Run all tests
 
 test-backend:    ## API + domain tests (SQLite, bundled landscape, Temporal time-skipping)
 	cd backend && .venv/bin/python -m pytest -q
+
+test-workflows:  ## Campaign workflow tests only (Temporal time-skipping test server)
+	cd backend && .venv/bin/python -m pytest -q tests/workflows
 
 test-ml:         ## Encoder export parity tests (needs `make setup-ml`)
 	cd ml && .venv/bin/python -m pytest -q

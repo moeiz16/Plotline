@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: API, workflows and domain core
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      LLM_FAKE: "true"
+      EO_SOURCE: bundled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Cache Temporal time-skipping test server
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: temporal-test-server-${{ runner.os }}-${{ hashFiles('backend/pyproject.toml') }}
+      - name: Lint
+        run: |
+          python -m ruff check app tests
+          python -m ruff format --check app tests
+      - name: Migrations apply cleanly
+        run: python -m alembic upgrade head && python -m alembic check
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci.db
+      - name: Tests
+        run: python -m pytest -q
+      - name: Demo seed runs offline
+        run: python -m app.cli seed demo
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci.db
+      - name: Evaluation gates
+        run: python ../eval/run.py
+
+  frontend:
+    name: Web app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run build
