@@ -8,7 +8,7 @@
 2. **One typeface.** Instrument Sans (variable, bundled offline through `@fontsource-variable/instrument-sans`) at 400, 500 and 600. A system monospace face only for plot, shipment and statement references.
 3. **Flat and warm.** Warm off-white canvas, hairline borders, an 8 px radius, one accent colour (deep pine). No gradients, glows, glass or decorative imagery. The only illustration is a static SVG of surveyed parcels.
 4. **Calm motion.** 150 to 200 ms fades and pops, skeleton loading, nothing loops. Everything honours `prefers-reduced-motion`.
-5. **Plain language.** People read "Land-change check", "Forest lost since 2021", "Cleared to ship", "EU submission file". Never engineering terms. The satellite change signal is always a second opinion; the legal verdict rests on the official forest maps (EU JRC Global Forest Cover 2020, Hansen Global Forest Change), and disagreements go to a reviewer. The plot page says so.
+5. **Plain language.** People read "Land-change signal", "Forest lost since 2021", "Cleared to ship", "EU submission file". Never engineering terms. The satellite change signal is always a second opinion; the legal verdict rests on the official forest maps (EU JRC Global Forest Cover 2020, Hansen Global Forest Change), and disagreements go to a reviewer. The plot page says so.
 6. **Honest compliance wording.** "Aligned with EUDR (Regulation (EU) 2023/1115)" and "designed to support your due diligence". Never "certified" or "compliant software". Submission to the EU information system (TRACES) is simulated and always labelled "(demo submission)".
 7. **Status is never colour alone.** Every verdict, risk tier, stage and check pairs an icon with a label.
 
@@ -59,8 +59,10 @@ Map layers cannot read CSS variables, so `VERDICT_MAP_COLOR` in `components/doma
 - `domain/status.tsx`: VerdictBadge, RiskBadge, ChangeBadge (land-change level), ShipmentBadge, DdsBadge, StageBadge, CheckIcon, CountryLabel.
 - `domain/readiness.tsx`: flat stacked verdict bar with a 2 px gap between segments, hover tooltips and a legend.
 - `domain/image-compare.tsx`: 2020 versus latest imagery with a draggable divider (keyboard slider underneath) or side by side, plus forest 2020 and loss-since-2021 overlays.
+- `map/base.ts`: the street basemap (OpenFreeMap) is re-tinted to Plotline's earthy palette per theme (warm land, muted sage water, quiet labels in Latin script); satellite imagery stays untouched.
 - `map/plot-map.tsx`: MapLibre map of plots coloured by verdict, street or satellite background, hover card, selection, fit to plots. Plots are dots when zoomed out and outlines when zoomed in. If the background map cannot load (offline), plots still draw on a plain background with a calm notice.
 - `map/draw-map.tsx`: tap-to-place point or tap-each-corner boundary drawing, with undo and "My location".
+- `domain/plot-draw-form.tsx`: the draw-and-check flow (live EUDR geolocation feedback while drawing), shared by the supplier upload link and the in-app "Map a plot" dialog.
 - `charts/loss-chart.tsx`: forest lost per year, single flat series, hairline grid, tooltip, lazy loaded.
 
 ## 7. Accessibility

@@ -56,8 +56,79 @@ export function baseStyle(kind: Basemap, dark: boolean, vector: StyleSpecificati
       layers: [bg, { id: "satellite", type: "raster", source: "satellite" }],
     };
   }
-  if (vector) return JSON.parse(JSON.stringify(vector)) as StyleSpecification;
+  if (vector) return earthTone(JSON.parse(JSON.stringify(vector)) as StyleSpecification, dark);
   return { version: 8, sources: {}, layers: [bg] };
+}
+
+/** Plotline's quiet, earthy palette for the street basemap, one set per theme. */
+const EARTH = {
+  light: {
+    bg: "#ece8df",
+    land: "#e6e1d5",
+    green: "#dde2cf",
+    water: "#c9d6d2",
+    waterLine: "#b7c8c3",
+    building: "#e0dacd",
+    road: "#f7f4ee",
+    roadCasing: "#d8d1c3",
+    rail: "#cfc8ba",
+    boundary: "#a89e8c",
+    text: "#5f5a52",
+    waterText: "#5d7671",
+    halo: "#f4f1ea",
+  },
+  dark: {
+    bg: "#1f1e1a",
+    land: "#23221e",
+    green: "#232820",
+    water: "#18211f",
+    waterLine: "#1d2a27",
+    building: "#2a2823",
+    road: "#302e28",
+    roadCasing: "#2a2823",
+    rail: "#35322b",
+    boundary: "#5c574c",
+    text: "#a39c8e",
+    waterText: "#6f8c85",
+    halo: "#1a1916",
+  },
+};
+
+const LATIN_NAME = ["coalesce", ["get", "name_en"], ["get", "name:latin"], ["get", "name"]];
+
+function earthTone(style: StyleSpecification, dark: boolean): StyleSpecification {
+  const c = dark ? EARTH.dark : EARTH.light;
+  style.layers = style.layers
+    .filter((l) => !/shield/.test(l.id))
+    .map((layer) => {
+      const l = layer as unknown as { id: string; type: string; paint?: Record<string, unknown>; layout?: Record<string, unknown> };
+      const id = l.id;
+      const paint = (l.paint ??= {});
+      if (l.type === "background") paint["background-color"] = c.bg;
+      else if (l.type === "fill") {
+        if (/water/.test(id)) paint["fill-color"] = c.water;
+        else if (/park|wood|grass|glacier|ice/.test(id)) paint["fill-color"] = c.green;
+        else if (/building/.test(id)) {
+          paint["fill-color"] = c.building;
+          paint["fill-outline-color"] = c.roadCasing;
+        } else if (/road|aeroway|pier/.test(id)) paint["fill-color"] = c.road;
+        else paint["fill-color"] = c.land;
+      } else if (l.type === "line") {
+        if (/water/.test(id)) paint["line-color"] = c.waterLine;
+        else if (/boundary/.test(id)) paint["line-color"] = c.boundary;
+        else if (/rail/.test(id)) paint["line-color"] = c.rail;
+        else if (/casing/.test(id)) paint["line-color"] = c.roadCasing;
+        else if (/highway|road|tunnel|bridge|aeroway|pier/.test(id)) paint["line-color"] = c.road;
+      } else if (l.type === "symbol" && l.layout?.["text-field"] !== undefined) {
+        const water = /water/.test(id);
+        paint["text-color"] = water ? c.waterText : c.text;
+        paint["text-halo-color"] = c.halo;
+        paint["text-halo-width"] = 1.2;
+        if (/^label_|water_name|airport/.test(id)) l.layout["text-field"] = LATIN_NAME;
+      }
+      return layer;
+    });
+  return style;
 }
 
 /* ── Geometry helpers ───────────────────────────────────────────────────── */
