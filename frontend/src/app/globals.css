@@ -1,0 +1,324 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Plotline design tokens: earthy, calm and flat. See DESIGN.md.
+   One sans family (Instrument Sans), hairline borders, one accent (pine).
+   Verdict colours are reserved for plot and shipment states and are always
+   paired with an icon and a label.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #f7f5f0;
+  --surface: #fdfcf9;
+  --surface-2: #f1eee7;
+  --surface-3: #e8e4da;
+  --border: #e2ddd2;
+  --border-strong: #cdc6b7;
+  --fg: #1f1d1a;
+  --fg-muted: #55504a;
+  --fg-subtle: #6b665d;
+
+  --brand: #1f5c4d;
+  --brand-hover: #184a3e;
+  --brand-soft: #e4eeea;
+  --brand-fg: #184a3e;
+  --brand-contrast: #ffffff;
+  --ring: #2f7a68;
+
+  --compliant: #2f7a4e;
+  --compliant-soft: #e6f1e9;
+  --compliant-fg: #22603b;
+  --review: #c28a17;
+  --review-soft: #faf0d9;
+  --review-fg: #805600;
+  --noncompliant: #b23b2e;
+  --noncompliant-soft: #f8e6e2;
+  --noncompliant-fg: #8f2e23;
+  --pending: #5b6b86;
+  --pending-soft: #eceef2;
+  --pending-fg: #46546b;
+
+  --shadow-pop: 0 10px 28px -12px rgb(31 29 26 / 0.18), 0 0 0 1px var(--border);
+
+  --dur-fast: 150ms;
+  --dur: 200ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #141412;
+  --surface: #1b1a17;
+  --surface-2: #22211d;
+  --surface-3: #2c2a25;
+  --border: #2f2d28;
+  --border-strong: #45423a;
+  --fg: #ece8df;
+  --fg-muted: #b5aea0;
+  --fg-subtle: #9a9385;
+
+  --brand: #6fc0af;
+  --brand-hover: #86cdbe;
+  --brand-soft: #1b2e2a;
+  --brand-fg: #8fd4c5;
+  --brand-contrast: #0f1d1a;
+  --ring: #6fc0af;
+
+  --compliant: #5db386;
+  --compliant-soft: #18291f;
+  --compliant-fg: #82cba3;
+  --review: #e0a63e;
+  --review-soft: #2e2413;
+  --review-fg: #ecbd68;
+  --noncompliant: #e26a57;
+  --noncompliant-soft: #34201c;
+  --noncompliant-fg: #ef9282;
+  --pending: #8e9dba;
+  --pending-soft: #222630;
+  --pending-fg: #adb9cf;
+
+  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / 0.6), 0 0 0 1px var(--border-strong);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-contrast: var(--brand-contrast);
+  --color-ring: var(--ring);
+
+  --color-compliant: var(--compliant);
+  --color-compliant-soft: var(--compliant-soft);
+  --color-compliant-fg: var(--compliant-fg);
+  --color-review: var(--review);
+  --color-review-soft: var(--review-soft);
+  --color-review-fg: var(--review-fg);
+  --color-noncompliant: var(--noncompliant);
+  --color-noncompliant-soft: var(--noncompliant-soft);
+  --color-noncompliant-fg: var(--noncompliant-fg);
+  --color-pending: var(--pending);
+  --color-pending-soft: var(--pending-soft);
+  --color-pending-fg: var(--pending-fg);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --shadow-pop: var(--shadow-pop);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--brand) 22%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+@keyframes sheet-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes sheet-in-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes shimmer {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+.skeleton {
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.fade-in {
+  animation: fade-in var(--dur) var(--ease-out);
+}
+
+/* MapLibre: keep its controls on-brand and flat. */
+.maplibregl-ctrl-group {
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 0 0 1px var(--border-strong) !important;
+  background: var(--surface) !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--border) !important;
+}
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.9);
+}
+.maplibregl-ctrl-attrib {
+  font-family: var(--font-sans);
+  font-size: 10px;
+}
+.dark .maplibregl-ctrl-attrib {
+  background: rgb(27 26 23 / 0.8) !important;
+  color: var(--fg-muted);
+}
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--fg-muted);
+}
+.maplibregl-canvas:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+}
+
+/* Map hover card */
+.pl-popup .maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--fg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  padding: 8px 10px;
+  font-family: var(--font-sans);
+}
+.pl-popup .maplibregl-popup-tip {
+  display: none;
+}
+.pl-popup-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pl-popup-sub {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
