@@ -253,6 +253,25 @@ export function useValidatePlot() {
   });
 }
 
+export function useCreatePlot() {
+  const inv = useInvalidate();
+  return useMutation({
+    mutationFn: (body: {
+      supplierId: string;
+      reference: string;
+      commodity: Commodity;
+      country: string;
+      geometry: Geometry;
+      declaredAreaHa?: number;
+      producerName?: string;
+    }) => api.post<Plot>("/plots", body),
+    onSuccess: (p, v) => {
+      toast.success(`Plot ${p.reference} added and sent for checking`);
+      return inv(qk.supplier(v.supplierId), ["plots"], ["suppliers"], qk.reviews, qk.dashboard);
+    },
+  });
+}
+
 export function useImportPlots() {
   const inv = useInvalidate();
   return useMutation({

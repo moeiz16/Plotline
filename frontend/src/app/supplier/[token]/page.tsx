@@ -1,29 +1,17 @@
 "use client";
 
-import {
-  CalendarClock,
-  CircleCheck,
-  FileUp,
-  LoaderCircle,
-  Lock,
-  MapPin,
-  Pentagon,
-  Send,
-  Trash,
-  Undo2,
-  X,
-} from "lucide-react";
+import { CalendarClock, CircleCheck, FileUp, Lock, MapPin, Pentagon, Send, Trash } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Logo } from "@/components/brand/logo";
-import { FILE_HINT, ImportResultView, IssueList } from "@/components/domain/import-result";
+import { FILE_HINT, ImportResultView } from "@/components/domain/import-result";
+import { PlotDrawForm } from "@/components/domain/plot-draw-form";
 import { CountryLabel, VerdictBadge } from "@/components/domain/status";
-import { DrawMap, type DrawMode } from "@/components/map/draw-map";
 import { Button } from "@/components/ui/button";
-import { Callout, Card, CardBody, CardHeader, EmptyState, ErrorState, Segmented, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/display";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Callout, Card, CardBody, CardHeader, EmptyState, ErrorState, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/display";
+import { Field, Select } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/overlays";
-import { ApiError, errorMessage } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import {
   usePortal,
   usePortalCreatePlot,
@@ -32,203 +20,21 @@ import {
   usePortalSubmit,
   usePortalValidate,
 } from "@/lib/api/hooks";
-import type { Commodity, Geometry, ImportResult, Portal, Position, ValidationResult } from "@/lib/api/types";
+import type { Commodity, ImportResult, Portal } from "@/lib/api/types";
 import { commodityLabel, dateLong, daysUntil, ha } from "@/lib/format";
-import { cn } from "@/lib/utils";
-
-function geometryFrom(mode: DrawMode, point: Position | null, vertices: Position[]): Geometry | null {
-  if (mode === "point") return point ? { type: "Point", coordinates: point } : null;
-  if (vertices.length < 3) return null;
-  return { type: "Polygon", coordinates: [[...vertices, vertices[0]]] };
-}
-
-function ValidationPanel({ state, result, error }: { state: "idle" | "checking" | "done" | "error"; result: ValidationResult | null; error: string | null }) {
-  if (state === "idle") return null;
-  if (state === "checking")
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-border bg-surface-2/60 px-3 py-2.5 text-sm text-muted" aria-live="polite">
-        <LoaderCircle className="size-4 animate-spin" aria-hidden /> Checking your plot…
-      </div>
-    );
-  if (state === "error")
-    return (
-      <Callout tone="noncompliant" className="py-2.5">
-        <span role="alert">{error}</span>
-      </Callout>
-    );
-  if (!result) return null;
-  return (
-    <div
-      className={cn("rounded-md border p-3", result.valid ? "border-compliant/25 bg-compliant-soft" : "border-noncompliant/25 bg-noncompliant-soft")}
-      aria-live="polite"
-    >
-      <p className={cn("flex items-center gap-2 text-sm font-medium", result.valid ? "text-compliant-fg" : "text-noncompliant-fg")}>
-        {result.valid ? <CircleCheck className="size-4" aria-hidden /> : <X className="size-4" aria-hidden />}
-        {result.valid
-          ? `Looks good: ${result.kind === "point" ? "a point" : "a boundary"} of ${ha(result.areaHa, 2)}`
-          : "This plot needs a correction before it can be saved"}
-      </p>
-      <IssueList issues={result.issues} className="mt-2" />
-    </div>
-  );
-}
 
 function DrawTab({ token, portal }: { token: string; portal: Portal }) {
-  const [mode, setMode] = useState<DrawMode>("polygon");
-  const [point, setPoint] = useState<Position | null>(null);
-  const [vertices, setVertices] = useState<Position[]>([]);
-  const [reference, setReference] = useState("");
-  const [commodity, setCommodity] = useState<Commodity>(portal.commodities[0] ?? "cocoa");
-  const [declared, setDeclared] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
   const validate = usePortalValidate(token);
   const create = usePortalCreatePlot(token);
-  const [vState, setVState] = useState<"idle" | "checking" | "done" | "error">("idle");
-  const [vResult, setVResult] = useState<ValidationResult | null>(null);
-  const [vError, setVError] = useState<string | null>(null);
-  const seq = useRef(0);
-
-  const geometry = useMemo(() => geometryFrom(mode, point, vertices), [mode, point, vertices]);
-  const declaredNum = declared ? Number(declared) : undefined;
-
-  // Check the shape against EUDR rules as soon as it is complete (debounced).
-  useEffect(() => {
-    if (!geometry) {
-      setVState("idle");
-      setVResult(null);
-      return;
-    }
-    const n = ++seq.current;
-    setVState("checking");
-    const t = setTimeout(async () => {
-      try {
-        const r = await validate.mutateAsync({ geometry, country: portal.country, declaredAreaHa: declaredNum });
-        if (n !== seq.current) return;
-        setVResult(r);
-        setVState("done");
-      } catch (e) {
-        if (n !== seq.current) return;
-        setVError(errorMessage(e));
-        setVState("error");
-      }
-    }, 450);
-    return () => clearTimeout(t);
-    // validate is stable enough; re-run only when inputs change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geometry, declaredNum, portal.country]);
-
-  function clear() {
-    setPoint(null);
-    setVertices([]);
-    setVResult(null);
-    setVState("idle");
-  }
-
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if (!reference.trim()) return setFormError("Give the plot a reference, for example the farm or field number.");
-    if (!geometry) return setFormError(mode === "point" ? "Tap the map to place your plot." : "Tap at least three corners of your plot on the map.");
-    if (mode === "point" && !(declaredNum && declaredNum > 0)) return setFormError("Enter the plot’s approximate area in hectares.");
-    if (!vResult?.valid) return setFormError("Please correct the plot first.");
-    setFormError(null);
-    try {
-      await create.mutateAsync({ reference: reference.trim(), commodity, geometry: vResult.normalized ?? geometry, declaredAreaHa: declaredNum });
-      setReference("");
-      setDeclared("");
-      clear();
-    } catch (err) {
-      if (err instanceof ApiError && err.problem.errors?.length) setFormError(err.problem.errors.map((x) => x.message).join(" "));
-    }
-  }
-
   return (
-    <div className="grid gap-4">
-      <Segmented<DrawMode>
-        label="How to map the plot"
-        value={mode}
-        onChange={(m) => {
-          setMode(m);
-          clear();
-        }}
-        className="w-full [&>button]:flex-1 [&>button]:justify-center"
-        options={[
-          { value: "polygon", label: (<><Pentagon aria-hidden /> Draw boundary</>) },
-          { value: "point", label: (<><MapPin aria-hidden /> Single point</>) },
-        ]}
-      />
-      <p className="text-[13px] leading-relaxed text-muted">
-        {mode === "polygon"
-          ? "Tap each corner of the plot in order. Three or more corners make a shape. Required for plots larger than 4 hectares."
-          : "Tap the centre of the plot, or use your location while standing in it. Points are allowed for plots of 4 hectares or less."}
-      </p>
-      <DrawMap
-        mode={mode}
-        point={point}
-        vertices={vertices}
-        onPoint={setPoint}
-        onVertices={setVertices}
-        country={portal.country}
-        existing={portal.plots}
-        className="h-[58dvh] max-h-[520px] min-h-[300px] rounded-lg border border-border"
-      />
-      {mode === "polygon" ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-auto text-[13px] text-muted">
-            {vertices.length} {vertices.length === 1 ? "corner" : "corners"} placed
-          </span>
-          <Button size="sm" onClick={() => setVertices((v) => v.slice(0, -1))} disabled={!vertices.length}>
-            <Undo2 /> Undo
-          </Button>
-          <Button size="sm" variant="ghost" onClick={clear} disabled={!vertices.length}>
-            Clear
-          </Button>
-        </div>
-      ) : point ? (
-        <div className="flex items-center justify-between gap-2 text-[13px] text-muted">
-          <span className="tabular">
-            {point[1].toFixed(6)}, {point[0].toFixed(6)}
-          </span>
-          <Button size="sm" variant="ghost" onClick={clear}>
-            Clear
-          </Button>
-        </div>
-      ) : null}
-
-      <ValidationPanel state={vState} result={vResult} error={vError} />
-
-      <form onSubmit={save} className="grid gap-4" noValidate>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Plot reference" htmlFor="p-ref" hint="Your own name or number for this plot.">
-            <Input id="p-ref" value={reference} onChange={(e) => setReference(e.target.value)} autoComplete="off" />
-          </Field>
-          <Field label="Crop" htmlFor="p-commodity">
-            <Select id="p-commodity" value={commodity} onChange={(e) => setCommodity(e.target.value as Commodity)}>
-              {(portal.commodities.length ? portal.commodities : (["cocoa"] as Commodity[])).map((c) => (
-                <option key={c} value={c}>
-                  {commodityLabel(c)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <Field
-          label="Approximate area (hectares)"
-          htmlFor="p-area"
-          optional={mode === "polygon"}
-          hint={mode === "point" ? "Required for single points. Up to 4 ha." : "We calculate the area from your boundary."}
-        >
-          <Input id="p-area" type="number" inputMode="decimal" min={0} step="0.01" value={declared} onChange={(e) => setDeclared(e.target.value)} />
-        </Field>
-        {formError ? (
-          <p role="alert" className="text-sm text-noncompliant-fg">
-            {formError}
-          </p>
-        ) : null}
-        <Button type="submit" variant="primary" size="lg" loading={create.isPending} disabled={!vResult?.valid || vState !== "done"}>
-          Save plot
-        </Button>
-      </form>
-    </div>
+    <PlotDrawForm
+      country={portal.country}
+      commodities={portal.commodities}
+      existing={portal.plots}
+      validate={(body) => validate.mutateAsync(body)}
+      create={({ reference, commodity, geometry, declaredAreaHa }) => create.mutateAsync({ reference, commodity, geometry, declaredAreaHa })}
+      saving={create.isPending}
+    />
   );
 }
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowLeft, FileUp, Link2, Mail, Pentagon } from "lucide-react";
+import { ArrowLeft, FileUp, Link2, Mail, Pentagon, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { FILE_HINT, ImportResultView } from "@/components/domain/import-result";
+import { PlotDrawForm } from "@/components/domain/plot-draw-form";
 import { VerdictBar, VerdictLegend } from "@/components/domain/readiness";
 import { PlotTable } from "@/components/domain/plot-table";
 import { CountryLabel, RiskBadge } from "@/components/domain/status";
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, Card, CardBody, CardHeader, CopyField, DefinitionList, EmptyState, ErrorState, Skeleton } from "@/components/ui/display";
 import { Field, Select } from "@/components/ui/input";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "@/components/ui/overlays";
-import { useImportPlots, usePlotsMap, usePortalLink, useSupplier } from "@/lib/api/hooks";
+import { useCreatePlot, useImportPlots, usePlotsMap, usePortalLink, useSupplier, useValidatePlot } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
 import type { Commodity, ImportResult, SupplierDetail } from "@/lib/api/types";
 import { SUPPLIER_KIND_LABEL, commodityLabel, dateLong, pct, relative } from "@/lib/format";
@@ -68,6 +69,40 @@ function LinkDialog({ supplier }: { supplier: SupplierDetail }) {
               </Button>
             ) : null}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function MapPlotDialog({ supplier }: { supplier: SupplierDetail }) {
+  const [open, setOpen] = useState(false);
+  const validate = useValidatePlot();
+  const create = useCreatePlot();
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>
+        <PenLine /> Map a plot
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          size="xl"
+          title="Map a plot"
+          description={`Draw a plot for ${supplier.name}. It is checked against EUDR geolocation rules as you draw, then assessed for forest loss once saved.`}
+        >
+          {open ? (
+            <PlotDrawForm
+              country={supplier.country}
+              commodities={supplier.commodities}
+              existing={Array.isArray(supplier.plots) ? supplier.plots : []}
+              validate={(body) => validate.mutateAsync(body)}
+              create={(d) => create.mutateAsync({ ...d, supplierId: supplier.id, country: supplier.country })}
+              saving={create.isPending}
+              showProducer
+              mapClassName="h-[46dvh] max-h-[440px] min-h-[260px]"
+              onSaved={() => setOpen(false)}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
@@ -198,6 +233,7 @@ export default function SupplierPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {can("plots:write") ? <MapPlotDialog supplier={s} /> : null}
           {can("plots:write") ? <ImportDialog supplier={s} /> : null}
           {can("suppliers:write") ? <LinkDialog supplier={s} /> : null}
         </div>
@@ -255,7 +291,7 @@ export default function SupplierPage() {
           <EmptyState
             icon={<Pentagon />}
             title="No plots yet"
-            body="Send the supplier an upload link, or import their plots from a file."
+            body="Send the supplier an upload link, map a plot yourself, or import plots from a file."
           />
         )}
       </Card>
