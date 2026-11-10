@@ -16,6 +16,7 @@ Non-compliant with a low change score stays Non-compliant but asks a reviewer to
 a decision and note; the original assessment is never overwritten.
 
 ## Consequences
-Verdicts are explainable and reproducible. The signal catches what 30 m loss maps miss (small clearings,
-recent change) without ever clearing a plot on its own. Reviewer workload rises with disagreements, which is
-the intended trade-off.
+Verdicts are explainable and reproducible. The signal can flag change that 30 m loss maps miss (small
+clearings, change after the latest Hansen release) without ever clearing a plot on its own; at demo scale it is
+not reliable enough to do more (see ADR 0004 and `ml/artifacts/EVAL.md`). Reviewer workload rises with
+disagreements, which is the intended trade-off.

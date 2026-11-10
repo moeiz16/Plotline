@@ -15,7 +15,7 @@ flowchart LR
   AS --> EO{{Evidence source}}
   EO -- bundled --> SYN[Synthetic landscape<br/>offline demo]
   EO -- live --> PC[Planetary Computer STAC<br/>Sentinel-2 L2A]
-  EO -- live --> HG[Hansen GFC v1.13<br/>public GCS]
+  EO -- live --> HG[Hansen GFC-2025-v1.13<br/>public GCS]
   EO -- live --> JRC[EU JRC GFC2020 V4<br/>COG]
   AS --> ENC[LeJEPA encoder<br/>NumPy forward pass]
   API <--> T[Temporal dev server<br/>:7233]
@@ -30,10 +30,10 @@ flowchart LR
 |---|---|---|
 | Web | Map-first app, supplier portal, landing | Next.js 15, TypeScript, Tailwind 4.1, MapLibre GL + OpenFreeMap |
 | API | Auth, tenancy, RBAC, audit chain, validation, SSE, rate limits | FastAPI, SQLAlchemy 2 async, Alembic |
-| Spatial | Geometry rules, parsing (GeoJSON/KML/CSV), geodesic area, overlaps, country plausibility, H3 index | Shapely 2, pyproj, DuckDB spatial, h3 |
+| Spatial | Geometry rules, parsing (GeoJSON/KML/CSV), geodesic area, overlap areas, country plausibility, H3 pre-filter for overlap candidates | Shapely 2, pyproj, DuckDB spatial (Shapely fallback), h3 |
 | Evidence | Forest 2020, loss since 2021, imagery composites, clipped raster cache in `data/rasters/` | rasterio (live), NumPy |
 | Assessment | Deterministic verdict rules + second signal + reproducibility hashes | NumPy |
-| Change signal | Tiny CNN encoder (~0.45 M params) trained with LeJEPA (SIGReg); cosine change score; similar plots | PyTorch for training only; NumPy at runtime |
+| Change signal | Tiny CNN encoder (442,976 params, 1.6 MB) trained with LeJEPA (SIGReg); cosine change score; similar plots (brute-force cosine within the tenant) | PyTorch for training only; NumPy at runtime |
 | Workflows | Supplier campaigns lasting weeks: requests, reminders, submissions, automated checks, human approval | Temporal (Python SDK), time-skipping tests |
 | Documents | DDS payload (TRACES structure), HTML/PDF evidence pack, plain-language summary | fpdf2, offline text generator (LiteLLM optional) |
 
@@ -48,13 +48,22 @@ flowchart LR
 5. Rules (`eudr-rules-2026.1`) produce the verdict, reasons and `review_required`; dataset versions and hashes
    are stored with the append-only assessment.
 
+## Evaluation
+`make eval` (`eval/run.py`) runs offline gates and writes `eval/RESULTS.md`: EUDR geometry cases, verdict rules
+(rule table plus every demo plot), reproducibility (re-assessment gives identical hashes), mass balance, and the
+change signal (held-out ROC-AUC ≥ 0.60 from `ml/artifacts/eval.json`, NumPy forward pass equal to PyTorch). The
+change-signal numbers come from `make ml-eval`, which scores the encoder, an untrained copy and NDVI/NBR
+differencing against Hansen loss labels; the full report is `ml/artifacts/EVAL.md`.
+
 ## Campaign workflow
 `SupplierCampaignWorkflow` fans out one child `SupplierEvidenceWorkflow` per supplier:
 request (portal link + notification) → wait for the `submitted` signal with a timer per reminder interval →
 reminders (then `overdue` after the due date) → automated assessment activity → wait for reviewer
 `decision` signal → approved, or changes requested and back to waiting. Activities write the stage and a
 timeline event to the database and publish an SSE event, so the UI works from the database even when the
-workflow server is down; workflow ids equal campaign/member ids so restarts resume, not duplicate.
+workflow server is down; workflow ids equal campaign/member ids so restarts resume, not duplicate. On startup
+the inline worker reconciles running campaigns with the workflow server, so seeded or interrupted campaigns
+continue. `CAMPAIGN_DAY_SECONDS` shortens a campaign "day" for demos (86,400 by default).
 
 ## Runtime modes
 | Mode | Database | Evidence | Workflows | Text |

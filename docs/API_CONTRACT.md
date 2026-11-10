@@ -1,10 +1,8 @@
-# Plotline API contract (v1) — binding
+# Plotline API contract (v1)
 
-This document is the single source of truth for the three parallel workstreams. Part 1 is the HTTP API
-(the frontend builds against it; the backend implements it exactly). Part 2 is the data model, Part 3 the
-Python interfaces between the backend platform and the domain core, Part 4 file ownership and working rules,
-Part 5 the demo seed. Changing anything here requires a note in the changing workstream's commit and a
-heads-up to the other workstreams.
+The reference for Plotline's module boundaries. Part 1 is the HTTP API (the web app builds against it; the
+backend implements it). Part 2 is the data model, Part 3 the Python interfaces between the backend platform and
+the domain core, Part 4 module boundaries and conventions, Part 5 the demo seed.
 
 # Part 1 — HTTP API
 
@@ -194,7 +192,7 @@ Assessment = {
 - Every response carries `X-Request-ID`. API responses are `Cache-Control: no-store` except imagery PNGs (`private, max-age=3600`). SSE responses send `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`.
 - Portal endpoints are public but rate-limited per IP and per token; tokens are 32+ random bytes, stored only as HMAC hashes, expire after `PORTAL_LINK_TTL_DAYS` (30) and are revoked when a new link is created.
 
-# Part 2 — Data model (SQLAlchemy 2, SQLite by default, Postgres-ready; owned by workstream A)
+# Part 2 — Data model (SQLAlchemy 2, SQLite by default, Postgres-ready)
 
 All tenant tables carry `org_id` (indexed) and every query filters on it. UUID primary keys unless noted.
 Timestamps are timezone-aware UTC. JSON columns use the portable `JSONType`.
@@ -223,11 +221,11 @@ Timestamps are timezone-aware UTC. JSON columns use the portable `JSONType`.
 Retention: plots, assessments, shipments, DDS and audit rows are never hard-deleted (archive only) for at
 least `EVIDENCE_RETENTION_YEARS` (5), per EUDR Art. 12.
 
-# Part 3 — Python interfaces between A (platform/API) and B (domain core)
+# Part 3 — Python interfaces between the platform/API and the domain core
 
-B's modules are plain Python (no FastAPI, no SQLAlchemy sessions, no global state besides read-only
-loaded data), deterministic, and fully offline in `EO_SOURCE=bundled`. A calls them from services,
-routers and Temporal activities. Names and signatures below are binding; B may add helpers.
+Domain-core modules are plain Python (no FastAPI, no SQLAlchemy sessions, no global state besides read-only
+loaded data), deterministic, and fully offline in `EO_SOURCE=bundled`. The platform calls them from services,
+routers and Temporal activities through the signatures below.
 
 ```python
 # app/spatial/validate.py
@@ -257,7 +255,7 @@ def parse_upload(filename: str, content: bytes) -> list[ParsedPlot]   # .geojson
 
 # app/spatial/overlaps.py   (DuckDB spatial; Shapely fallback if the extension cannot load)
 def find_overlaps(geometry: dict, others: list[tuple[str, dict]], min_overlap_ha: float = 0.01) -> list[tuple[str, float]]
-#   -> [(other_plot_id, overlap_ha)]; A pre-filters `others` by shared H3 res-5 parent.
+#   -> [(other_plot_id, overlap_ha)]; the plots service pre-filters `others` by shared H3 res-5 parent.
 def plots_in_bbox(...)  # optional helper
 
 # app/spatial/countries.py
@@ -302,46 +300,37 @@ def similar_plots(target: list[float], candidates: list[tuple[str, list[float]]]
 # review_required (reviewer confirms). Too cloudy -> changeScore null, verdict from official data only.
 # No evidence available (live mode offline) -> pending.
 
-# app/eo/demo.py   (bundled synthetic landscape for the seeded plots; used by the seed in A)
+# app/eo/demo.py   (bundled synthetic landscape for the seeded plots; used by the demo seed)
 @dataclass
 class DemoPlot: reference: str; supplier_key: str; commodity: str; country: str; geometry: dict
                declared_area_ha: float | None; scenario: str   # intended outcome, for tests
 DEMO_PLOTS: list[DemoPlot]   # ~26 plots across the supplier keys in Part 5
 
-# app/ai/summary.py (owned by A): plain-language evidence summaries; deterministic text when LLM_FAKE=true,
+# app/ai/summary.py: plain-language evidence summaries; deterministic text when LLM_FAKE=true,
 # LiteLLM (free tiers, optional `[ai]` extra) otherwise. Never used for verdicts.
 ```
 
-Settings B reads (already in `app/core/config.py`): `EO_SOURCE` (`bundled`|`live`), `DATA_DIR` (raster cache
+Domain-core settings (in `app/core/config.py`): `EO_SOURCE` (`bundled`|`live`), `DATA_DIR` (raster cache
 under `data/rasters/`), `CHANGE_ENCODER_PATH`, `CHANGE_EVAL_PATH` (threshold from `api_threshold`).
 
-# Part 4 — Workstreams, file ownership and working rules
+# Part 4 — Module boundaries and conventions
 
-| Workstream | Owns (create/edit only these) |
+| Area | Paths |
 |---|---|
-| **A — backend platform, API, workflows, seed** | `backend/app/main.py`, `backend/app/cli.py`, `backend/app/core/**`, `backend/app/db/**`, `backend/app/schemas/**`, `backend/app/services/**`, `backend/app/api/**`, `backend/app/workflows/**` (Temporal workflows, activities, worker, client), `backend/app/ai/**`, `backend/app/evidence/**` (DDS payload, HTML/PDF evidence pack), `backend/alembic/**`, `backend/alembic.ini`, `backend/pyproject.toml`, `backend/tests/conftest.py`, `backend/tests/platform/**`, `backend/tests/api/**`, `backend/tests/workflows/**`, `Makefile`, `.env.example`, `.github/workflows/ci.yml` |
-| **B — spatial, Earth observation, LeJEPA core** | `ml/**` (fetch, train, export, evaluate, notebooks, artifacts, tests), `backend/app/spatial/**`, `backend/app/eo/**`, `backend/app/ml/**` (NumPy encoder copy of `ml/plotline_ml/npencoder.py`, change score, similarity), `backend/app/rules/**`, `backend/app/assessment/**`, `backend/tests/domain/**`, `eval/**` (`eval/run.py` gates: geometry rules, verdict rules, mass balance, change signal vs Hansen from `ml/artifacts/eval.json`) |
-| **C — frontend** | `frontend/**` |
-| **Lead / orchestrator** | `docs/**`, `README.md`, `LICENSE`, `.gitignore`, final verification, screenshots, portfolio kit |
+| Platform, API, workflows, documents | `backend/app/main.py`, `cli.py`, `core/`, `db/`, `schemas/`, `services/`, `api/`, `workflows/` (Temporal workflows, activities, worker, client), `ai/`, `evidence/` (DDS payload, HTML/PDF evidence pack), `alembic/` |
+| Spatial, Earth observation, rules, change signal | `backend/app/spatial/`, `eo/`, `ml/` (NumPy copy of `ml/plotline_ml/npencoder.py`, change score, similarity), `rules/`, `assessment/`; training and evaluation in `ml/`; gates in `eval/run.py` |
+| Web app | `frontend/` |
 
-Shared-file rules: if B needs a new Python dependency, append it to `backend/pyproject.toml` in one small edit
-and say so in the commit (A owns the file). B never edits A's files and vice versa; ask through the
-orchestrator. Contract changes go through `docs/API_CONTRACT.md` (lead).
+Conventions:
+- Ports: web 3010, API 8010, Temporal 7233 (UI 8233).
+- Python tools run from the venvs: `backend/.venv/bin/python -m pytest|ruff|mypy|uvicorn`; ML:
+  `ml/.venv/bin/python -m plotline_ml.<step>`.
+- Runs offline and without accounts by default; the tiny LeJEPA encoder is the only model and runs in NumPy.
+- User-facing text the API returns (headlines, reasons, insights, check labels, summaries) is plain business
+  language: no engineering terms such as "model", "embedding", "pipeline", "cache" or "fallback". The second
+  signal is called the "land-change signal". Tests enforce this.
 
-Working rules (8 GB laptop):
-- Only ONE heavy process at a time on the machine. Wrap every install, test run, build, lint/typecheck, server
-  smoke check and training run in the lock helper: `/Users/moeizshahzad/Work/plotline/.tools/heavy <A|B|C> <command…>`.
-  It blocks until the lock is free. Servers started for a check must be started and stopped inside one wrapped command.
-- Ports: web 3010, API 8010, Temporal 7233 (UI 8233). Stop everything you start (`lsof -i :PORT`).
-- Python: always `backend/.venv/bin/python -m pytest|ruff|mypy|uvicorn`; ML: `ml/.venv/bin/python -m plotline_ml.<step>`.
-- No Docker, no local AI models (the tiny LeJEPA encoder is the allowed exception), no signups, $0.
-- Git: commit only your own paths (`git add <paths>`; never `git add -A`), conventional commits, Moeiz's
-  identity, no AI attribution or trailers, never push. Serialise commits with the lock: `.tools/heavy <ws> git commit …`.
-- UI copy rules (STANDARDS §4) also apply to any user-facing text the API returns (headlines, reasons,
-  insights, check labels, summaries): no "model", "embedding", "pipeline", "cache", "fallback", etc. Call the
-  second signal the "land-change signal".
-
-# Part 5 — Demo seed (A implements `make seed`; B supplies plot geometries + scenarios)
+# Part 5 — Demo seed (`make seed`; plot geometries and scenarios from `app/eo/demo.py`)
 
 Org: **Northbank Cocoa & Coffee Imports GmbH** (Hamburg, DE), EORI `DE4471902385516`, operator size `large`.
 Users (password for all: `Northbank-Demo-2026`; synthetic people):
@@ -362,8 +351,8 @@ Suppliers (`supplier_key` → name, country, commodities, kind):
 `sulawesi-kakao` Koperasi Kakao Sulawesi (ID, cocoa, cooperative) · `san-martin-coop` Cooperativa Agraria San Martín (PE, coffee + cocoa, cooperative) ·
 `ucayali-cacao` Cacao Ucayali SAC (PE, cocoa, exporter; invited, no plots yet).
 
-Plots: B's `DEMO_PLOTS` (~26; mix of compliant, needs review, non-compliant; at least one point plot ≤ 4 ha, one
-plot with a geometry warning). Products: cocoa beans (HS 1801), green coffee not roasted (HS 0901 11). About 8
-shipments (A): 4 ready, 3 blocked (non-compliant plot, mass-balance overrun, unreviewed plot / mixing), 1 submitted
+Plots: `DEMO_PLOTS` (26; mix of compliant, needs review, non-compliant; at least one point plot ≤ 4 ha, one
+plot with a geometry warning). Products: cocoa beans (HS 1801), green coffee not roasted (HS 0901 11). 8
+shipments: 4 ready, 3 blocked (non-compliant plot, mass-balance overrun, unreviewed plot / mixing), 1 submitted
 with a DDS. One running campaign "Q1 2027 harvest evidence" over `rondonia-robusta`, `gayo-highland`,
 `ucayali-cacao`, `san-martin-coop` at different stages (requested, reminded, awaiting_review, approved).

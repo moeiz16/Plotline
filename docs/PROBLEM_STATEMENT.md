@@ -65,3 +65,9 @@ verdicts nobody can reproduce a year later.
 - Submission to TRACES is simulated; the payload follows the published DDS structure but is not filed.
 - Hansen loss is 30 m and misses selective logging and conversion under canopy; JRC GFC2020 has known
   commission/omission errors. Both are why a reviewer stays in the loop.
+- The land-change signal is trained at demo scale (nine landscapes, laptop CPU). It generalises to the two
+  held-out regions but is not calibrated across landscapes, so it only routes plots to review (see the README
+  results and `ml/artifacts/EVAL.md`).
+- The country benchmarking table is a static, partial transcription of the Annex to Implementing Regulation
+  (EU) 2025/1093 and should be checked against the published list before use.
+- The demo runs on a synthetic landscape; live reads of Sentinel-2, Hansen and JRC are optional.
