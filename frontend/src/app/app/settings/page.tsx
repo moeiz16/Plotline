@@ -204,7 +204,8 @@ function MembersCard({ editable, myUserId }: { editable: boolean; myUserId: stri
                       aria-label={`Role for ${m.fullName}`}
                       value={m.role}
                       onChange={(e) => update.mutate({ id: m.id, role: e.target.value as Role })}
-                      className="h-8 w-48 text-[13px]"
+                      className="h-8 text-[13px]"
+                      wrapperClassName="w-48"
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r}>

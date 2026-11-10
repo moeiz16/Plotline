@@ -171,7 +171,7 @@ export default function CampaignPage() {
           </p>
         </div>
         {running && can("campaigns:write") ? (
-          <Button variant="danger-outline" onClick={() => setConfirmStop(true)}>
+          <Button variant="danger-outline" onClick={() => setConfirmStop(true)} disabled={!c.engineOnline}>
             Stop campaign
           </Button>
         ) : null}
@@ -179,7 +179,7 @@ export default function CampaignPage() {
 
       {running && !c.engineOnline ? (
         <Callout tone="review" icon={<CirclePause />} className="mb-4" title="Automatic follow-ups are paused">
-          Progress is saved and will resume on its own. You can still send reminders and make decisions.
+          Progress is saved and nothing is lost. Reminders, approvals and stopping the campaign are available again as soon as follow-ups resume.
         </Callout>
       ) : null}
 
@@ -244,16 +244,16 @@ export default function CampaignPage() {
                   <div className="flex flex-wrap gap-2">
                     {canDecide ? (
                       <>
-                        <Button size="sm" variant="primary" onClick={() => setDecision({ member: m, approve: true })}>
+                        <Button size="sm" variant="primary" onClick={() => setDecision({ member: m, approve: true })} disabled={!c.engineOnline}>
                           <CircleCheck /> Approve
                         </Button>
-                        <Button size="sm" onClick={() => setDecision({ member: m, approve: false })}>
+                        <Button size="sm" onClick={() => setDecision({ member: m, approve: false })} disabled={!c.engineOnline}>
                           <MessageSquareText /> Request changes
                         </Button>
                       </>
                     ) : null}
                     {canRemind ? (
-                      <Button size="sm" loading={remind.isPending && remind.variables === m.supplierId} onClick={() => remind.mutate(m.supplierId)}>
+                      <Button size="sm" loading={remind.isPending && remind.variables === m.supplierId} onClick={() => remind.mutate(m.supplierId)} disabled={!c.engineOnline}>
                         <BellRing /> Send reminder
                       </Button>
                     ) : null}
@@ -295,7 +295,7 @@ export default function CampaignPage() {
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm">
-                        {t.supplierName ? <span className="font-medium">{t.supplierName}: </span> : null}
+                        {t.supplierName && !t.message.includes(t.supplierName) ? <span className="font-medium">{t.supplierName}: </span> : null}
                         {t.message}
                       </p>
                       <p className="text-xs text-muted">{relative(t.at)}</p>

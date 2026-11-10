@@ -34,6 +34,7 @@ export class NetworkError extends Error {
 
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.code === "engine_unavailable") return "Automatic follow-ups are paused right now. Your progress is saved; please try again shortly.";
     if (err.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
     if (err.status === 403) return err.problem.detail || "Your role doesn’t allow this action.";
     if (err.status === 404) return err.problem.detail || "We couldn’t find that.";

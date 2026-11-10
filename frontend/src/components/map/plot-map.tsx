@@ -208,7 +208,13 @@ export function PlotMap({
     if (data && fittedKey.current !== fitKey && data.features.length) {
       fittedKey.current = fitKey;
       const b = boundsOf(data.features.map((f) => f.geometry));
-      if (b) map.fitBounds(b, { padding: compact ? 28 : 56, maxZoom: maxFitZoom, duration: 0 });
+      // Keep plots clear of the background toggle (top left), zoom buttons (top right) and attribution (bottom).
+      if (b)
+        map.fitBounds(b, {
+          padding: compact ? { top: 64, bottom: 48, left: 40, right: 56 } : { top: 72, bottom: 56, left: 56, right: 72 },
+          maxZoom: maxFitZoom,
+          duration: 0,
+        });
     }
   }, [data, ready, fitKey, compact, maxFitZoom]);
 

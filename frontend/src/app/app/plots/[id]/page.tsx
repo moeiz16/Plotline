@@ -73,13 +73,28 @@ const DECISIONS: Record<ReviewDecision, { label: string; title: string; help: st
   },
 };
 
+/** Version labels in plain words: fingerprints stay (auditors compare them), internal names don't. */
+function plainVersion(v: string | null | undefined, kind?: "signal") {
+  if (!v) return "–";
+  const fp = v.match(/\((?:sha-?256|hash)\s*([0-9a-f]{6,})\)/i)?.[1];
+  let text = v.replace(/\((?:sha-?256|hash)[^)]*\)/i, "").trim();
+  // "synthetic-landscape-v1: sample forest map in …" → "Sample forest map in …"
+  const colon = text.indexOf(": ");
+  if (colon > 0 && kind !== "signal") text = text.slice(colon + 2).replace(/^./, (c) => c.toUpperCase());
+  if (kind === "signal") {
+    const ver = text.match(/v\d+(?:\.\d+)*/i)?.[0];
+    text = `Land-change signal ${ver ?? ""}`.trim();
+  }
+  return fp ? `${text} · ${fp.slice(0, 12)}` : text;
+}
+
 function datasetRows(a: Assessment) {
   return [
-    { label: "Forest map (2020)", value: a.datasets.forest2020 },
-    { label: "Forest loss data", value: a.datasets.forestLoss },
-    { label: "Imagery source", value: a.datasets.imagery },
-    { label: "Land-change signal version", value: a.datasets.changeModel },
-    { label: "Rule set version", value: a.datasets.rules },
+    { label: "Forest map (2020)", value: plainVersion(a.datasets.forest2020) },
+    { label: "Forest loss data", value: plainVersion(a.datasets.forestLoss) },
+    { label: "Imagery source", value: plainVersion(a.datasets.imagery) },
+    { label: "Land-change signal version", value: plainVersion(a.datasets.changeModel, "signal") },
+    { label: "Rule set version", value: plainVersion(a.datasets.rules) },
   ];
 }
 
@@ -189,7 +204,7 @@ function History({ plotId }: { plotId: string }) {
                 {isOpen ? (
                   <div className="mt-3 rounded-md border border-border bg-surface-2/50 px-3 py-1">
                     <p className="pt-2 text-xs font-medium text-muted">Data versions used</p>
-                    <DefinitionList items={datasetRows(a).map((r) => ({ label: r.label, value: <span className="font-mono text-xs">{r.value}</span> }))} />
+                    <DefinitionList items={datasetRows(a).map((r) => ({ label: r.label, value: <span className="text-xs font-normal [overflow-wrap:anywhere]">{r.value}</span> }))} />
                     <DefinitionList
                       className="border-t border-border"
                       items={[
@@ -364,6 +379,25 @@ export default function PlotPage() {
             {!assess.isPending ? <RotateCw /> : null} Re-run check
           </Button>
         ) : null}
+      </div>
+
+      {/* On phones the verdict leads; on wide screens it sits in the side column. */}
+      <div
+        className={cn(
+          "mb-4 flex items-start gap-3 rounded-lg border p-4 lg:hidden",
+          { compliant: "border-compliant/25 bg-compliant-soft", review: "border-review/30 bg-review-soft", noncompliant: "border-noncompliant/25 bg-noncompliant-soft", pending: "border-border bg-pending-soft", neutral: "border-border bg-surface", brand: "border-border bg-surface" }[meta.tone],
+        )}
+      >
+        <span className="mt-0.5 shrink-0 [&_svg]:size-5">{meta.icon}</span>
+        <div className="min-w-0">
+          <p className="font-semibold">{meta.label}</p>
+          <p className="text-sm text-muted">{a?.headline ?? plot.headline ?? meta.description}</p>
+          {plot.reviewRequired && can("plots:review") ? (
+            <a href="#review" className="mt-1.5 inline-block text-sm font-medium text-brand-fg underline underline-offset-2">
+              Go to your review
+            </a>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

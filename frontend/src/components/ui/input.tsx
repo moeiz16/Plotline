@@ -31,9 +31,9 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
 Textarea.displayName = "Textarea";
 
 /** Native select: fully keyboard and screen-reader friendly, styled to match. */
-export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div className="relative">
+export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement> & { wrapperClassName?: string }>(
+  ({ className, wrapperClassName, children, ...props }, ref) => (
+    <div className={cn("relative", wrapperClassName)}>
       <select ref={ref} className={cn(fieldClass, "h-9 appearance-none pr-8", className)} {...props}>
         {children}
       </select>

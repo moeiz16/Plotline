@@ -230,6 +230,32 @@ export default function OverviewPage() {
                 </div>
               </Card>
               <Readiness d={d} />
+              <Card>
+                <CardHeader title="Recent activity" />
+                <CardBody className="py-2">
+                  {d.recentActivity.length ? (
+                    <ol className="relative grid gap-0">
+                      {d.recentActivity.slice(0, 8).map((a, i, arr) => (
+                        <li key={a.id} className="relative flex gap-3 py-2.5">
+                          <span className="relative mt-1.5 flex flex-col items-center">
+                            <span className="size-2 rounded-full bg-border-strong" aria-hidden />
+                            {i < arr.length - 1 ? <span className="absolute top-3 h-[calc(100%+4px)] w-px bg-border" aria-hidden /> : null}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[13px]">{a.label}</p>
+                            <p className="text-xs text-muted">
+                              {a.actorName ? `${a.actorName} · ` : ""}
+                              {relative(a.createdAt)}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="py-4 text-sm text-muted">No activity yet.</p>
+                  )}
+                </CardBody>
+              </Card>
             </div>
 
             <div className="grid min-w-0 content-start gap-4">
@@ -298,32 +324,6 @@ export default function OverviewPage() {
                 )}
               </Card>
 
-              <Card>
-                <CardHeader title="Recent activity" />
-                <CardBody className="py-2">
-                  {d.recentActivity.length ? (
-                    <ol className="relative grid gap-0">
-                      {d.recentActivity.slice(0, 8).map((a, i, arr) => (
-                        <li key={a.id} className="relative flex gap-3 py-2.5">
-                          <span className="relative mt-1.5 flex flex-col items-center">
-                            <span className="size-2 rounded-full bg-border-strong" aria-hidden />
-                            {i < arr.length - 1 ? <span className="absolute top-3 h-[calc(100%+4px)] w-px bg-border" aria-hidden /> : null}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-[13px]">{a.label}</p>
-                            <p className="text-xs text-muted">
-                              {a.actorName ? `${a.actorName} · ` : ""}
-                              {relative(a.createdAt)}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="py-4 text-sm text-muted">No activity yet.</p>
-                  )}
-                </CardBody>
-              </Card>
             </div>
           </div>
         </div>
