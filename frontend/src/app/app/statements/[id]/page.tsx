@@ -4,14 +4,13 @@ import { ArrowLeft, Download, ExternalLink, FileText, Send } from "lucide-react"
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { DdsBadge } from "@/components/domain/status";
 import { PlotMap } from "@/components/map/plot-map";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Callout, Card, CardBody, CardHeader, CopyField, ErrorState, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/display";
 import { ConfirmDialog } from "@/components/ui/overlays";
-import { api, fileUrl } from "@/lib/api/client";
+import { fileUrl } from "@/lib/api/client";
 import { useDds, useSubmitDds } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
 import type { Geometry, PlotFeatureCollection } from "@/lib/api/types";
@@ -20,7 +19,52 @@ import { cn } from "@/lib/utils";
 
 const ACRONYMS = new Set(["hs", "eori", "id", "eu", "dds", "ha", "kg", "iso", "url", "vat"]);
 
+/** Plain names for the EU information system's field names. */
+const LABELS: Record<string, string> = {
+  geometryGeojson: "Plot locations",
+  geoLocationConfidential: "Locations kept confidential",
+  borderCrossCountry: "Border crossing country",
+  internalReferenceNumber: "Internal reference",
+  netWeight: "Net weight (kg)",
+  hsHeading: "HS heading",
+  speciesInfo: "Species",
+  referenceNumber: "Operator identifiers",
+  descriptors: "Goods",
+  goodsMeasure: "Quantity",
+};
+
+const VALUE_LABELS: Record<string, string> = { eori: "EORI", OPERATOR: "Operator", IMPORT: "Import", EXPORT: "Export", DOMESTIC: "Domestic" };
+
+/** The EU format carries each producer's plots as a base64-encoded GeoJSON FeatureCollection. */
+function decodeGeojson(v: unknown): { type: string; features?: unknown[] } | null {
+  if (typeof v !== "string" || v.length < 16) return null;
+  try {
+    const bin = atob(v);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const obj = JSON.parse(new TextDecoder().decode(bytes)) as { type?: string; features?: unknown[] };
+    return obj && typeof obj.type === "string" ? (obj as { type: string; features?: unknown[] }) : null;
+  } catch {
+    return null;
+  }
+}
+
+function PlotLocations({ fc }: { fc: { type: string; features?: unknown[] } }) {
+  const feats = (fc.features ?? []) as { geometry?: { type?: string }; properties?: Record<string, unknown> }[];
+  const points = feats.filter((f) => f.geometry?.type === "Point").length;
+  const refs = feats.map((f) => f.properties?.ProductionPlace).filter((r): r is string => typeof r === "string");
+  return (
+    <span className="grid justify-items-end gap-0.5">
+      <span>
+        {feats.length} {feats.length === 1 ? "plot" : "plots"}
+        {points ? ` (${points} as ${points === 1 ? "a point" : "points"})` : ""}
+      </span>
+      {refs.length ? <span className="font-mono text-xs font-normal text-muted [overflow-wrap:anywhere]">{refs.join(", ")}</span> : null}
+    </span>
+  );
+}
+
 function humanize(key: string) {
+  if (LABELS[key]) return LABELS[key];
   const words = key
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
@@ -48,7 +92,8 @@ function countPositions(c: unknown): number {
 function Scalar({ v }: { v: unknown }) {
   if (v === null || v === undefined || v === "") return <span className="text-subtle">–</span>;
   if (typeof v === "boolean") return <span>{v ? "Yes" : "No"}</span>;
-  return <span className="break-words">{String(v)}</span>;
+  const text = String(v);
+  return <span className="[overflow-wrap:anywhere]">{VALUE_LABELS[text] ?? text}</span>;
 }
 
 /** Renders the EU submission data as nested, readable sections instead of raw code. */
@@ -90,7 +135,15 @@ function DataView({ value, depth = 0 }: { value: unknown; depth?: number }) {
           ) : (
             <div key={k} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-border py-2 first:border-t-0">
               <dt className="text-muted">{humanize(k)}</dt>
-              <dd className="min-w-0 text-right font-medium">{isGeometry(v) ? <DataView value={v} /> : <Scalar v={Array.isArray(v) ? v.join(", ") : v} />}</dd>
+              <dd className="min-w-0 text-right font-medium">
+                {isGeometry(v) ? (
+                  <DataView value={v} />
+                ) : /geojson/i.test(k) && decodeGeojson(v) ? (
+                  <PlotLocations fc={decodeGeojson(v)!} />
+                ) : (
+                  <Scalar v={Array.isArray(v) ? v.join(", ") : v} />
+                )}
+              </dd>
             </div>
           );
         })}
@@ -104,6 +157,11 @@ function DataView({ value, depth = 0 }: { value: unknown; depth?: number }) {
 function declaredPlots(payload: unknown): PlotFeatureCollection {
   const features: PlotFeatureCollection["features"] = [];
   const walk = (v: unknown, label: string | null) => {
+    if (typeof v === "string") {
+      const fc = decodeGeojson(v);
+      if (fc) walk(fc, label);
+      return;
+    }
     if (!v || typeof v !== "object") return;
     if (isGeometry(v) && ["Point", "Polygon", "MultiPolygon"].includes(v.type)) {
       const n = features.length + 1;
@@ -115,7 +173,9 @@ function declaredPlots(payload: unknown): PlotFeatureCollection {
       return;
     }
     const rec = v as Record<string, unknown>;
-    const ref = typeof rec.reference === "string" ? rec.reference : typeof rec.plotReference === "string" ? rec.plotReference : typeof rec.productionPlace === "string" ? rec.productionPlace : label;
+    const props = (rec.properties ?? {}) as Record<string, unknown>;
+    const pick = [rec.reference, rec.plotReference, rec.productionPlace, props.ProductionPlace, props.reference].find((x) => typeof x === "string");
+    const ref = typeof pick === "string" ? pick : label;
     for (const x of Array.isArray(v) ? v : Object.values(rec)) walk(x, ref);
   };
   walk(payload, null);
@@ -123,21 +183,18 @@ function declaredPlots(payload: unknown): PlotFeatureCollection {
 }
 
 function EvidencePreview({ id }: { id: string }) {
-  const q = useQuery({
-    queryKey: ["dds", id, "evidence"],
-    queryFn: () => api.get<string>(`/dds/${id}/evidence.html`),
-    staleTime: 5 * 60_000,
-  });
-  if (q.isPending) return <Skeleton className="h-[560px]" />;
-  if (q.isError || typeof q.data !== "string")
-    return <ErrorState error={q.error} onRetry={() => q.refetch()} title="The evidence pack couldn’t be shown here" />;
+  const [loaded, setLoaded] = useState(false);
   return (
-    <iframe
-      title="Evidence pack preview"
-      srcDoc={q.data}
-      sandbox=""
-      className="h-[640px] w-full rounded-md border border-border bg-white"
-    />
+    <div className="relative">
+      {!loaded ? <Skeleton className="absolute inset-0 h-[640px]" /> : null}
+      <iframe
+        title="Evidence pack preview"
+        src={fileUrl(`/dds/${id}/evidence.html`)}
+        sandbox="allow-same-origin"
+        onLoad={() => setLoaded(true)}
+        className="h-[640px] w-full rounded-md border border-border bg-white"
+      />
+    </div>
   );
 }
 

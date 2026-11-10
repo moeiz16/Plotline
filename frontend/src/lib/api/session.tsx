@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, type ReactNode } from "react";
-import { ApiError, api } from "./client";
+import { ApiError, api, readCookie } from "./client";
 import { qk } from "./hooks";
 import type { LoginResponse, Me, Permission } from "./types";
 
@@ -10,6 +10,8 @@ export function useMe() {
   return useQuery({
     queryKey: qk.me,
     queryFn: async () => {
+      // No session cookies at all: skip the round trip (and the 401 it would log) on a first visit.
+      if (typeof document !== "undefined" && !readCookie("pl_csrf")) return null;
       try {
         return await api.get<Me>("/auth/me");
       } catch (e) {

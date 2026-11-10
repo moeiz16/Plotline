@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
     return [{ source: "/api/v1/:path*", destination: `${API_ORIGIN}/api/v1/:path*` }];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    // Proxied API responses keep the service's own headers (it allows evidence packs to be framed by this site).
+    return [{ source: "/((?!api/).*)", headers: securityHeaders }];
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts"],
