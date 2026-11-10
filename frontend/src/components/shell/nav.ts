@@ -1,6 +1,7 @@
 import {
   Eye,
   FileCheck,
+  Globe,
   Handshake,
   LayoutDashboard,
   MapIcon,
@@ -38,6 +39,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { href: "/app/campaigns", label: "Campaigns", icon: Megaphone, perm: "campaigns:read" },
       { href: "/app/shipments", label: "Shipments", icon: Ship, perm: "shipments:read" },
       { href: "/app/statements", label: "Statements", icon: FileCheck, perm: "dds:read" },
+      { href: "/app/countries", label: "Country risk", icon: Globe, perm: "suppliers:read" },
     ],
   },
   {

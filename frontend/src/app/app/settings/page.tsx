@@ -1,8 +1,7 @@
 "use client";
 
-import { Archive, Building, Globe, MailPlus, Trash, Users } from "lucide-react";
+import { Archive, Building, MailPlus, Trash, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { CountryLabel, RiskBadge } from "@/components/domain/status";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +11,6 @@ import {
   CardBody,
   CardHeader,
   CopyField,
-  EmptyState,
   ErrorState,
   LoadingBlock,
   PageHeader,
@@ -40,7 +38,7 @@ import {
 } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
 import type { Member, Org, Role } from "@/lib/api/types";
-import { ROLE_LABEL, commodityLabel, date, dateLong } from "@/lib/format";
+import { ROLE_LABEL, date, dateLong } from "@/lib/format";
 import { absoluteUrl } from "@/lib/utils";
 
 const ROLES: Role[] = ["owner", "compliance_manager", "sourcing", "reviewer", "auditor", "supplier"];
@@ -81,11 +79,14 @@ function OrgForm({ org, editable }: { org: Org; editable: boolean }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!f.name.trim()) return setErrors({ name: "Enter your organisation’s name." });
+    const eori = f.eori.replace(/\s+/g, "").toUpperCase();
+    if (eori && !/^[A-Z]{2}[A-Z0-9]{1,15}$/.test(eori))
+      return setErrors({ eori: "An EORI number starts with a two-letter country code followed by up to 15 letters or digits, for example DE4471902385516." });
     setErrors({});
     try {
       await update.mutateAsync({
         name: f.name.trim(),
-        eori: f.eori.trim() || null,
+        eori: eori || null,
         address: f.address.trim() || null,
         country: f.country || null,
         operatorSize: f.operatorSize,
@@ -327,49 +328,6 @@ function InvitationsCard() {
   );
 }
 
-function CountriesCard() {
-  const q = useCountries();
-  return (
-    <Card>
-      <CardHeader
-        title="Country risk"
-        description="Risk tiers from the European Commission’s country benchmarking (Article 29 of the regulation). High risk means enhanced checks; low risk allows simplified due diligence."
-        icon={<Globe />}
-      />
-      {q.isPending ? (
-        <LoadingBlock className="p-5" rows={6} />
-      ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => q.refetch()} />
-      ) : !q.data.length ? (
-        <EmptyState title="No countries listed" />
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <Th>Country</Th>
-              <Th>Risk tier</Th>
-              <Th>Commodities you source here</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {q.data.map((c) => (
-              <tr key={c.code}>
-                <Td>
-                  <CountryLabel code={c.code} name={c.name} />
-                </Td>
-                <Td>
-                  <RiskBadge tier={c.riskTier} />
-                </Td>
-                <Td className="text-muted">{c.commodities.length ? c.commodities.map(commodityLabel).join(", ") : "–"}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
-    </Card>
-  );
-}
-
 function RetentionCard({ years }: { years: number }) {
   return (
     <Card>
@@ -399,7 +357,6 @@ export default function SettingsPage() {
         <TabsList className="mb-5">
           <TabsTrigger value="organisation">Organisation</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="countries">Country risk</TabsTrigger>
           <TabsTrigger value="retention">Data retention</TabsTrigger>
         </TabsList>
         <TabsContent value="organisation" className="outline-none">
@@ -414,9 +371,6 @@ export default function SettingsPage() {
           ) : (
             <MembersCard editable={false} myUserId={me?.user.id ?? ""} />
           )}
-        </TabsContent>
-        <TabsContent value="countries" className="outline-none">
-          <CountriesCard />
         </TabsContent>
         <TabsContent value="retention" className="outline-none">
           <RetentionCard years={org.data?.settings.retentionYears ?? 5} />

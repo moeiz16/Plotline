@@ -104,11 +104,12 @@ function Readiness({ d }: { d: Dashboard }) {
             <EmptyState title="No suppliers yet" className="py-8" />
           )
         ) : by === "commodity" ? (
-          d.byCommodity.map((c) => <ReadinessRow key={c.key} label={c.label || commodityLabel(c.key)} split={c} plots={c.plots} readinessPct={c.readinessPct} />)
+          d.byCommodity.map((c) => <ReadinessRow key={c.key} href={`/app/plots?commodity=${c.key}`} label={c.label || commodityLabel(c.key)} split={c} plots={c.plots} readinessPct={c.readinessPct} />)
         ) : (
           d.byCountry.map((c) => (
             <ReadinessRow
               key={c.key}
+              href={`/app/plots?country=${c.key}`}
               label={<CountryLabel code={c.key} name={c.label} />}
               meta={<RiskBadge tier={c.riskTier} className="h-5 text-[11px]" />}
               split={c}
