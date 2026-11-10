@@ -1,14 +1,44 @@
 "use client";
 
-import { ArrowRight, CircleCheck, Scale } from "lucide-react";
+import { ArrowRight, CircleCheck, Satellite, Scale } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChangeBadge, CountryLabel, VerdictBadge } from "@/components/domain/status";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Callout, Card, EmptyState, ErrorState, LoadingBlock, PageHeader } from "@/components/ui/display";
+import { fileUrl } from "@/lib/api/client";
 import { useReviews } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
 import { commodityLabel, ha, relative } from "@/lib/format";
+
+/** 2020 and latest imagery side by side, so a reviewer can see the change before opening the plot. */
+function BeforeAfterThumb({ id, reference }: { id: string; reference: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed)
+    return (
+      <div className="hidden size-16 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 text-subtle sm:flex" aria-hidden>
+        <Satellite className="size-4" />
+      </div>
+    );
+  return (
+    <div className="hidden shrink-0 gap-0.5 overflow-hidden rounded-md border border-border sm:flex" aria-hidden>
+      {(["baseline", "current"] as const).map((k) => (
+        <img
+          key={k}
+          src={fileUrl(`/plots/${id}/imagery/${k}.png`)}
+          alt=""
+          width={64}
+          height={64}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className="size-16 bg-surface-2 object-cover [image-rendering:pixelated]"
+          title={`${reference}: ${k === "baseline" ? "2020" : "latest"}`}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function ReviewsPage() {
   const q = useReviews();
@@ -17,7 +47,7 @@ export default function ReviewsPage() {
     <PageContainer>
       <PageHeader
         title="Review queue"
-        description="Plots where the official forest data and the satellite land-change check need a person’s judgement before the plot can be used."
+        description="Plots where the official forest data and the satellite land-change signal need a person’s judgement before the plot can be used."
       />
       {!can("plots:review") ? (
         <Callout tone="neutral" icon={<Scale />} className="mb-4" title="You can view this queue">
@@ -34,7 +64,8 @@ export default function ReviewsPage() {
         ) : (
           <ul className="divide-y divide-border">
             {q.data.map((p) => (
-              <li key={p.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+              <li key={p.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+                <BeforeAfterThumb id={p.id} reference={p.reference} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold">{p.reference}</span>

@@ -3,15 +3,18 @@
 import { ArrowLeft, Download, ExternalLink, FileText, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DdsBadge } from "@/components/domain/status";
+import { PlotMap } from "@/components/map/plot-map";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
-import { Callout, Card, CardBody, CardHeader, CopyField, ErrorState, Skeleton } from "@/components/ui/display";
+import { Callout, Card, CardBody, CardHeader, CopyField, ErrorState, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/display";
 import { ConfirmDialog } from "@/components/ui/overlays";
-import { fileUrl } from "@/lib/api/client";
+import { api, fileUrl } from "@/lib/api/client";
 import { useDds, useSubmitDds } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
+import type { Geometry, PlotFeatureCollection } from "@/lib/api/types";
 import { dateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +100,47 @@ function DataView({ value, depth = 0 }: { value: unknown; depth?: number }) {
   return <Scalar v={value} />;
 }
 
+/** Every plot location declared in the statement, found anywhere in the submission data. */
+function declaredPlots(payload: unknown): PlotFeatureCollection {
+  const features: PlotFeatureCollection["features"] = [];
+  const walk = (v: unknown, label: string | null) => {
+    if (!v || typeof v !== "object") return;
+    if (isGeometry(v) && ["Point", "Polygon", "MultiPolygon"].includes(v.type)) {
+      const n = features.length + 1;
+      features.push({
+        type: "Feature",
+        geometry: v as Geometry,
+        properties: { id: `declared-${n}`, reference: label ?? `Plot ${n}`, verdict: "compliant", commodity: "cocoa", supplierName: "", areaHa: 0, kind: v.type === "Point" ? "point" : "polygon" },
+      });
+      return;
+    }
+    const rec = v as Record<string, unknown>;
+    const ref = typeof rec.reference === "string" ? rec.reference : typeof rec.plotReference === "string" ? rec.plotReference : typeof rec.productionPlace === "string" ? rec.productionPlace : label;
+    for (const x of Array.isArray(v) ? v : Object.values(rec)) walk(x, ref);
+  };
+  walk(payload, null);
+  return { type: "FeatureCollection", features };
+}
+
+function EvidencePreview({ id }: { id: string }) {
+  const q = useQuery({
+    queryKey: ["dds", id, "evidence"],
+    queryFn: () => api.get<string>(`/dds/${id}/evidence.html`),
+    staleTime: 5 * 60_000,
+  });
+  if (q.isPending) return <Skeleton className="h-[560px]" />;
+  if (q.isError || typeof q.data !== "string")
+    return <ErrorState error={q.error} onRetry={() => q.refetch()} title="The evidence pack couldn’t be shown here" />;
+  return (
+    <iframe
+      title="Evidence pack preview"
+      srcDoc={q.data}
+      sandbox=""
+      className="h-[640px] w-full rounded-md border border-border bg-white"
+    />
+  );
+}
+
 export default function StatementPage() {
   const { id } = useParams<{ id: string }>();
   const q = useDds(id);
@@ -104,6 +148,7 @@ export default function StatementPage() {
   const { can } = useSession();
   const [confirm, setConfirm] = useState(false);
   const d = q.data;
+  const plots = useMemo(() => declaredPlots(d?.payload), [d?.payload]);
 
   if (q.isPending)
     return (
@@ -169,19 +214,37 @@ export default function StatementPage() {
               <p className="whitespace-pre-line text-sm leading-relaxed">{d.summary}</p>
             </CardBody>
           </Card>
+          {plots.features.length ? (
+            <Card className="overflow-hidden">
+              <CardHeader title="Declared plots" description={`${plots.features.length} ${plots.features.length === 1 ? "location" : "locations"} included in this statement.`} />
+              <PlotMap data={plots} compact hoverCard={false} maxFitZoom={15} className="h-64 sm:h-80" ariaLabel="Map of the plots declared in this statement" />
+            </Card>
+          ) : null}
           <Card>
-            <CardHeader
-              title="EU submission data"
-              description="What the statement contains, in the structure the EU information system expects."
-              action={
+            <Tabs defaultValue="data">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-border px-2 sm:px-3">
+                <TabsList className="border-b-0">
+                  <TabsTrigger value="data">Statement contents</TabsTrigger>
+                  <TabsTrigger value="evidence">Evidence pack</TabsTrigger>
+                </TabsList>
                 <Button asChild size="sm" variant="ghost">
                   <a href={fileUrl(`/dds/${d.id}/payload.json`)} download>
                     <Download /> Download
                   </a>
                 </Button>
-              }
-            />
-            <CardBody className="text-sm">{d.payload ? <DataView value={d.payload} /> : <p className="text-muted">Not available.</p>}</CardBody>
+              </div>
+              <TabsContent value="data" className="outline-none">
+                <CardBody className="text-sm">
+                  <p className="mb-3 text-[13px] text-muted">What the statement contains, in the structure the EU information system expects.</p>
+                  {d.payload ? <DataView value={d.payload} /> : <p className="text-muted">Not available.</p>}
+                </CardBody>
+              </TabsContent>
+              <TabsContent value="evidence" className="outline-none">
+                <CardBody>
+                  <EvidencePreview id={d.id} />
+                </CardBody>
+              </TabsContent>
+            </Tabs>
           </Card>
         </div>
         <div className="grid min-w-0 content-start gap-4">

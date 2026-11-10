@@ -3,13 +3,16 @@
 import { ArrowDown, ArrowLeft, ArrowRight, Blend, CircleCheck, FileCheck, Package, Ship } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useMemo } from "react";
+import { VerdictLegend } from "@/components/domain/readiness";
+import { PlotMap } from "@/components/map/plot-map";
 import { CheckIcon, CHECK_META, CountryLabel, DdsBadge, RiskBadge, ShipmentBadge, VerdictBadge, VerdictDot } from "@/components/domain/status";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { Callout, Card, CardBody, CardHeader, ErrorState, Meter, Skeleton, Table, Td, Th } from "@/components/ui/display";
-import { useCreateDds, useShipment, useTrace } from "@/lib/api/hooks";
+import { useCreateDds, usePlotsMap, useShipment, useTrace } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
-import type { Shipment, Trace, TraceNode } from "@/lib/api/types";
+import type { PlotFeatureCollection, Shipment, Trace, TraceNode } from "@/lib/api/types";
 import { commodityLabel, ha, kg, num, pct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -125,6 +128,34 @@ function Header({ s }: { s: Shipment }) {
   );
 }
 
+/** The plots this shipment was grown on, coloured by verdict. */
+function OriginMap({ s }: { s: Shipment }) {
+  const all = usePlotsMap({ commodity: s.commodity });
+  const data = useMemo<PlotFeatureCollection | undefined>(() => {
+    if (!all.data) return undefined;
+    const ids = new Set(s.allocations.map((a) => a.plotId));
+    return { type: "FeatureCollection", features: all.data.features.filter((f) => ids.has(f.properties.id)) };
+  }, [all.data, s.allocations]);
+  const router = useRouter();
+  if (!s.allocations.length) return null;
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader title="Where it was grown" description={`${s.allocations.length} ${s.allocations.length === 1 ? "plot" : "plots"} in ${s.countries.map((c) => c.name).join(", ") || "–"}`} />
+      <PlotMap
+        data={data}
+        compact
+        fitKey={s.id}
+        className="h-64 sm:h-80"
+        onSelect={(id) => id && router.push(`/app/plots/${id}`)}
+        ariaLabel={`Map of the plots in shipment ${s.reference}`}
+      />
+      <div className="border-t border-border px-4 py-2.5 sm:px-5">
+        <VerdictLegend />
+      </div>
+    </Card>
+  );
+}
+
 export default function ShipmentPage() {
   const { id } = useParams<{ id: string }>();
   const q = useShipment(id);
@@ -186,8 +217,11 @@ export default function ShipmentPage() {
             </CardBody>
           </Card>
 
+          <OriginMap s={s} />
+
           <Card>
             <CardHeader title="Volume check" description="Allocated quantity against what each plot could plausibly produce in a harvest year." />
+            <div className="hidden sm:block">
             <Table>
               <thead>
                 <tr>
@@ -218,6 +252,23 @@ export default function ShipmentPage() {
                 ))}
               </tbody>
             </Table>
+            </div>
+            <ul className="divide-y divide-border sm:hidden">
+              {s.massBalance.map((m) => (
+                <li key={m.plotId} className="grid gap-1.5 px-4 py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <Link href={`/app/plots/${m.plotId}`} className="font-mono text-[13px] font-medium hover:underline">
+                      {m.reference}
+                    </Link>
+                    <span className={cn("text-xs font-medium tabular", !m.ok && "text-noncompliant-fg")}>{pct(m.utilisationPct)} of capacity</span>
+                  </div>
+                  <Meter value={Math.min(100, m.utilisationPct)} tone={m.ok ? "compliant" : "noncompliant"} label={`${m.reference} capacity used`} />
+                  <p className="text-xs text-muted tabular">
+                    {kg(m.allocatedKg)} allocated · {kg(m.capacityKg)} plausible
+                  </p>
+                </li>
+              ))}
+            </ul>
             {s.massBalance.some((m) => !m.ok) ? (
               <p className="px-4 py-3 text-xs text-noncompliant-fg sm:px-5">
                 Some plots are allocated more than they could plausibly grow. This often means product from other, unmapped land was mixed in.
@@ -227,6 +278,7 @@ export default function ShipmentPage() {
 
           <Card>
             <CardHeader title="Plots in this shipment" />
+            <div className="hidden sm:block">
             <Table>
               <thead>
                 <tr>
@@ -259,6 +311,23 @@ export default function ShipmentPage() {
                 ))}
               </tbody>
             </Table>
+            </div>
+            <ul className="divide-y divide-border sm:hidden">
+              {s.allocations.map((a) => (
+                <li key={a.plotId}>
+                  <Link href={`/app/plots/${a.plotId}`} className="flex items-start justify-between gap-3 px-4 py-3 outline-none hover:bg-surface-2 focus-visible:bg-surface-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[13px] font-medium">{a.reference}</p>
+                      <p className="truncate text-xs text-muted">{a.supplierName}</p>
+                      <p className="mt-0.5 text-xs text-muted tabular">
+                        {kg(a.quantityKg)} · {ha(a.areaHa)}
+                      </p>
+                    </div>
+                    <VerdictBadge verdict={a.verdict} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </Card>
         </div>
 

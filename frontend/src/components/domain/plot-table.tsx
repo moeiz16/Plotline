@@ -42,7 +42,7 @@ export function PlotTable({ plots, showSupplier = true }: { plots: PlotListItem[
             <Th>Country</Th>
             <Th align="right">Area</Th>
             <Th>Verdict</Th>
-            <Th>Land-change check</Th>
+            <Th>Land-change signal</Th>
             <Th>Last checked</Th>
           </tr>
         </thead>

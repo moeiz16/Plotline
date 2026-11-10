@@ -32,7 +32,7 @@ const STEPS = [
   {
     icon: Satellite,
     title: "Check against satellite forest maps",
-    body: "Each plot is compared with the official 2020 forest baseline and yearly forest-loss data. A satellite land-change check gives a second opinion, and any disagreement goes to a reviewer.",
+    body: "Each plot is compared with the official 2020 forest baseline and yearly forest-loss data. A satellite land-change signal gives a second opinion, and any disagreement goes to a reviewer.",
   },
   {
     icon: Ship,
@@ -68,7 +68,7 @@ const SOURCES = [
   {
     name: "Copernicus Sentinel-2",
     org: "European Union, Copernicus programme",
-    body: "Recent satellite imagery for before-and-after views and the land-change check.",
+    body: "Recent satellite imagery for before-and-after views and the land-change signal.",
   },
 ];
 

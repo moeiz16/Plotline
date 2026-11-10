@@ -117,7 +117,7 @@ export function RiskBadge({ tier, className }: { tier: RiskTier | null | undefin
   );
 }
 
-/* ── Land-change check (satellite change signal) ────────────────────────── */
+/* ── Land-change signal (second opinion from imagery) ────────────────────────── */
 export const CHANGE_META: Record<ChangeLevel, Meta> = {
   low: { label: "Low", tone: "compliant", icon: <Satellite aria-hidden /> },
   elevated: { label: "Elevated", tone: "review", icon: <Satellite aria-hidden /> },

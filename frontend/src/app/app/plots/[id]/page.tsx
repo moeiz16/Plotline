@@ -78,7 +78,7 @@ function datasetRows(a: Assessment) {
     { label: "Forest map (2020)", value: a.datasets.forest2020 },
     { label: "Forest loss data", value: a.datasets.forestLoss },
     { label: "Imagery source", value: a.datasets.imagery },
-    { label: "Land-change check version", value: a.datasets.changeModel },
+    { label: "Land-change signal version", value: a.datasets.changeModel },
     { label: "Rule set version", value: a.datasets.rules },
   ];
 }
@@ -248,13 +248,36 @@ function Similar({ plotId }: { plotId: string }) {
   );
 }
 
+/** Where this plot's land-change signal sits on a calm low → high scale. */
+function SignalScale({ score }: { score: number }) {
+  const v = Math.max(0, Math.min(1, score));
+  return (
+    <div>
+      <div className="relative flex h-2 gap-0.5" aria-hidden>
+        <span className="flex-1 rounded-l-full bg-compliant/35" />
+        <span className="flex-1 bg-review/40" />
+        <span className="flex-1 rounded-r-full bg-noncompliant/40" />
+        <span
+          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-fg"
+          style={{ left: `${v * 100}%` }}
+        />
+      </div>
+      <div className="mt-1.5 flex justify-between text-[11px] text-subtle" aria-hidden>
+        <span>Little change</span>
+        <span>Strong change</span>
+      </div>
+      <p className="sr-only">Land-change signal strength {Math.round(v * 100)} out of 100.</p>
+    </div>
+  );
+}
+
 function agreementText(a: Assessment) {
   if (a.changeLevel === null || a.signalsAgree === null)
-    return { tone: "pending" as const, text: "Recent imagery was too cloudy for a land-change check, so this verdict rests on the official forest maps alone." };
-  if (a.signalsAgree) return { tone: "compliant" as const, text: "The land-change check agrees with the official forest maps." };
+    return { tone: "pending" as const, text: "Recent imagery was too cloudy for the land-change signal, so this verdict rests on the official forest maps alone." };
+  if (a.signalsAgree) return { tone: "compliant" as const, text: "The land-change signal agrees with the official forest maps." };
   return {
     tone: "review" as const,
-    text: "The land-change check disagrees with the official forest maps. A reviewer must confirm the verdict before this plot can be used.",
+    text: "The land-change signal disagrees with the official forest maps. A reviewer must confirm the verdict before this plot can be used.",
   };
 }
 
@@ -447,12 +470,13 @@ export default function PlotPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Land-change check" description="A second opinion from recent satellite imagery." />
+            <CardHeader title="Land-change signal" description="A second opinion from recent satellite imagery." />
             <CardBody className="grid gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm text-muted">Change since 2020</span>
                 <ChangeBadge level={a?.changeLevel ?? null} />
               </div>
+              {a && a.changeScore !== null ? <SignalScale score={a.changeScore} /> : null}
               {a?.cloudFreeShare !== null && a?.cloudFreeShare !== undefined ? (
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="text-muted">Cloud-free imagery</span>
@@ -476,7 +500,7 @@ export default function PlotPage() {
                     Hansen Global Forest Change shows tree-cover loss in each year since.
                   </p>
                   <p>
-                    The land-change check compares recent Copernicus Sentinel-2 imagery with how the plot looked in 2020. It is a second opinion only. When it
+                    The land-change signal compares recent Copernicus Sentinel-2 imagery with how the plot looked in 2020. It is a second opinion only. When it
                     disagrees with the official maps, the plot goes to a reviewer rather than being decided automatically.
                   </p>
                 </div>
