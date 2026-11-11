@@ -73,7 +73,13 @@ const DECISIONS: Record<ReviewDecision, { label: string; title: string; help: st
   },
 };
 
-/** Version labels in plain words: fingerprints stay (auditors compare them), internal names don't. */
+/** Short, readable check code from a fingerprint: "27af5206ac10…" → "27AF-5206-AC10". */
+function checkCode(digest: string | null | undefined, chars = 12) {
+  if (!digest) return "–";
+  return (digest.slice(0, chars).toUpperCase().match(/.{1,4}/g) ?? []).join("-");
+}
+
+/** Version labels in plain words: check codes stay (auditors compare them), internal names don't. */
 function plainVersion(v: string | null | undefined, kind?: "signal") {
   if (!v) return "–";
   const fp = v.match(/\((?:sha-?256|hash)\s*([0-9a-f]{6,})\)/i)?.[1];
@@ -85,7 +91,7 @@ function plainVersion(v: string | null | undefined, kind?: "signal") {
     const ver = text.match(/v\d+(?:\.\d+)*/i)?.[0];
     text = `Land-change signal ${ver ?? ""}`.trim();
   }
-  return fp ? `${text} · ${fp.slice(0, 12)}` : text;
+  return fp ? `${text} · ${checkCode(fp)}` : text;
 }
 
 function datasetRows(a: Assessment) {
@@ -209,8 +215,8 @@ function History({ plotId }: { plotId: string }) {
                       className="border-t border-border"
                       items={[
                         { label: "Imagery", value: a.source === "live" ? "Live satellite data" : "Stored demo imagery" },
-                        { label: "Input fingerprint", value: <span className="font-mono text-xs" title={a.inputsHash}>{a.inputsHash.slice(0, 16)}…</span> },
-                        { label: "Result fingerprint", value: <span className="font-mono text-xs" title={a.resultHash}>{a.resultHash.slice(0, 16)}…</span> },
+                        { label: "Input check code", value: <span className="font-mono text-xs">{checkCode(a.inputsHash)}</span> },
+                        { label: "Result check code", value: <span className="font-mono text-xs">{checkCode(a.resultHash)}</span> },
                       ]}
                     />
                   </div>
@@ -221,7 +227,7 @@ function History({ plotId }: { plotId: string }) {
         </ol>
       )}
       <p className="border-t border-border px-4 py-3 text-xs leading-relaxed text-muted sm:px-5">
-        Checks are reproducible: running one again with the same plot boundary and the same data versions gives the same verdict. The fingerprints let an
+        Checks are reproducible: running one again with the same plot boundary and the same data versions gives the same verdict. The check codes let an
         auditor confirm that nothing changed.
       </p>
     </Card>

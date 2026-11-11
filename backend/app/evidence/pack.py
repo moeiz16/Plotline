@@ -44,6 +44,14 @@ def _date(value: str | None) -> str:
     return value[:10] if value else "–"
 
 
+def check_code(digest: str | None) -> str:
+    """A short, readable integrity code (first 16 characters of the statement fingerprint, grouped)."""
+    if not digest:
+        return "–"
+    head = digest[:16].upper()
+    return "-".join(head[i : i + 4] for i in range(0, len(head), 4))
+
+
 # ── HTML ─────────────────────────────────────────────────────────────────────
 _CSS = """
 :root{--ink:#1f2a24;--muted:#5d6b62;--line:#d9ded6;--accent:#3f6b4e;--warn:#a06a1f;--bad:#9c3d2e;--bg:#fbfbf8}
@@ -107,7 +115,7 @@ def render_html(ctx: dict) -> str:
     )
     chain = ctx.get("auditChain") or {}
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Evidence pack {e(d["internalRef"])}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Evidence pack {e(d["internalRef"])}</title>
 <style>{_CSS}</style></head><body><main>
 <p class="muted">Due diligence evidence pack · generated {_date(ctx["generatedAt"])}</p>
 <h1>{e(s["productName"])} · shipment {e(s["reference"])}</h1>
@@ -132,7 +140,7 @@ def render_html(ctx: dict) -> str:
 <th>Used</th></tr></thead><tbody>{rows_mb}</tbody></table>
 <h2>Evidence sources</h2><table><tbody>{rows_datasets}</tbody></table>
 <h2>Submission log</h2><table><tbody>{rows_subs}</tbody></table>
-<h2>Integrity</h2><p>Statement fingerprint <code>{e(d["payloadHash"])}</code><br>
+<h2>Integrity</h2><p>Statement check code <code>{e(check_code(d.get("payloadHash")))}</code><br>
 Audit trail: {chain.get("checked", 0)} entries verified, {"intact" if chain.get("valid", True) else "BROKEN"}.<br>
 Records are kept for at least {ctx["retentionYears"]} years.</p>
 <footer>{e(DISCLAIMER)}</footer></main></body></html>"""
@@ -279,7 +287,7 @@ def render_pdf(ctx: dict) -> bytes:
         0,
         4.8,
         _latin1(
-            f"Statement fingerprint {d['payloadHash']}. Audit trail: {chain.get('checked', 0)} entries verified, "
+            f"Statement check code {check_code(d.get('payloadHash'))}. Audit trail: {chain.get('checked', 0)} entries verified, "
             f"{'intact' if chain.get('valid', True) else 'BROKEN'}. Records are kept for at least "
             f"{ctx['retentionYears']} years."
         ),
