@@ -264,7 +264,7 @@ async def shipment_detail(
     if reevaluate and s.status != "submitted":
         await evaluate(db, s)
     rows = await _allocation_rows(db, s)
-    agg = {
+    agg: dict[str, set] = {
         "plots": {p.id for _a, p, _n in rows},
         "suppliers": {p.supplier_id for _a, p, _n in rows},
         "countries": {p.country for _a, p, _n in rows},

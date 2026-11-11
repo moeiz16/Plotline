@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,7 +32,7 @@ def set_auth_cookies(
     response: Response, tokens: auth_svc.IssuedTokens | None = None, *, access_token: str | None = None
 ) -> str:
     s = get_settings()
-    common = {"secure": s.cookie_secure, "samesite": "lax", "domain": s.cookie_domain}
+    common: dict[str, Any] = {"secure": s.cookie_secure, "samesite": "lax", "domain": s.cookie_domain}
     access = tokens.access_token if tokens else access_token
     if access:
         response.set_cookie(

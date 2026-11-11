@@ -66,7 +66,7 @@ def _add_request_id(_logger: Any, _method: str, event_dict: dict) -> dict:
 
 
 def configure_logging(level: str = "INFO", json_logs: bool = False) -> None:
-    shared = [
+    shared: list[Any] = [
         structlog.contextvars.merge_contextvars,
         _add_request_id,
         structlog.stdlib.add_log_level,

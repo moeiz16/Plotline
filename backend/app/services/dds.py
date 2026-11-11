@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections import Counter
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -315,7 +316,8 @@ async def evidence_context(db: AsyncSession, org: Organization, d: Dds, shipment
     assessments = {
         a.id: a for a in (await db.execute(select(Assessment).where(Assessment.id.in_(ids)))).scalars()
     }
-    plots, datasets = [], {}
+    plots: list[dict[str, Any]] = []
+    datasets: dict[str, Any] = {}
     for _a, p, name in rows:
         a = assessments.get(p.latest_assessment_id) if p.latest_assessment_id else None
         out = assessment_out(a) if a else {}
