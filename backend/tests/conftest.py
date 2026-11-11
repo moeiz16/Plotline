@@ -1,4 +1,4 @@
-"""Shared test fixtures (owned by workstream A).
+"""Shared test fixtures.
 
 * Settings are pinned via env vars before the app is imported (temp SQLite DB, generous rate limits, offline).
 * Tests isolate by creating fresh users / orgs (unique emails) rather than truncating tables.

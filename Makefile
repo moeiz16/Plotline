@@ -84,7 +84,7 @@ eval:            ## Evaluation gates (verdict rules, geometry rules, change sign
 ml-data:         ## Download demo-scale Sentinel-2 + Hansen + JRC windows (network, ~120 MB)
 	$(MLPY) -m plotline_ml.fetch
 
-train:           ## Train the change encoder with LeJEPA on CPU (a few minutes) and export it
+train:           ## Train the change encoder with LeJEPA on CPU (about 20-25 minutes) and export it
 	$(MLPY) -m plotline_ml.train && $(MLPY) -m plotline_ml.export
 
 ml-eval:         ## Score the change signal against Hansen loss labels -> ml/artifacts/eval.json

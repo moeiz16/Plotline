@@ -1,6 +1,5 @@
 """Central configuration (12-factor). Every setting is overridable via env / .env.
 
-Owned by workstream A. Workstream B reads the Earth-observation and change-signal settings below.
 Add new settings to the relevant section; never rename existing ones.
 """
 
@@ -63,7 +62,7 @@ class Settings(BaseSettings):
     campaign_day_seconds: int = 86_400
     temporal_connect_timeout_s: float = 2.0
 
-    # ── Earth observation & change signal (workstream B) ──────────────────
+    # ── Earth observation & change signal ────────────────────────────────
     data_dir: Path = REPO_ROOT / "data"
     eo_source: Literal["bundled", "live"] = "bundled"
     change_encoder_path: Path = REPO_ROOT / "ml" / "artifacts" / "encoder.npz"
