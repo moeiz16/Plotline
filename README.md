@@ -147,7 +147,7 @@ flowchart LR
 | Gate | Result |
 |---|---|
 | EUDR geometry rules | 16 / 16 labelled cases |
-| Verdict rules | 35 / 35 (9 rule-table cases + 26 demo plots), about 12 ms per plot assessment |
+| Verdict rules | 35 / 35 (9 rule-table cases + 26 demo plots), 10 to 12 ms per plot assessment |
 | Reproducibility | 9 / 9 re-assessments identical (input and result hashes, embedding) |
 | Mass balance | 10 / 10 labelled shipment cases |
 | Change signal | held-out ROC-AUC ≥ 0.60; NumPy and PyTorch outputs match (max abs diff 9.5e-07) |
@@ -193,11 +193,26 @@ Full report with per-region numbers: [ml/artifacts/EVAL.md](ml/artifacts/EVAL.md
 
 ### Tests and performance
 
-- 224 backend test functions (more with parametrised cases): API, platform security and tenant isolation, domain rules, migrations, and Temporal campaigns on the time-skipping test server.
+- 332 backend tests: API, platform security and tenant isolation, domain rules, migrations, and Temporal campaigns on the time-skipping test server.
 - 9 ML export and notebook parity tests.
 - CI runs lint, migrations, tests, the offline seed, the evaluation gates and the production web build.
 
-> TODO (coordinator): measured plot assessment time end to end, API p50 / p95 under the demo data, `make seed` time.
+Measured on an 8 GB MacBook with SQLite and the offline bundled landscape, API served without reload
+(20 requests per endpoint after warm-up, sent straight to the API):
+
+| Measure | p50 | p95 |
+|---|---|---|
+| Plot assessment, engine only (26 demo plots) | 10 to 12 ms | |
+| `POST /plots/{id}/assess` end to end | 7.9 ms | 22.9 ms |
+| `GET /dashboard` | 3.4 ms | 4.9 ms |
+| `GET /plots` | 1.9 ms | 2.0 ms |
+| `GET /plots/map` | 2.1 ms | 2.2 ms |
+| `GET /plots/{id}` | 1.7 ms | 2.0 ms |
+| `GET /suppliers` | 1.6 ms | 1.8 ms |
+| `GET /shipments/{id}` | 3.1 ms | 3.5 ms |
+
+`make seed` (demo organisation, 26 assessed plots, 8 shipments, a submitted statement and a running campaign)
+takes about 1.7 s; `make reset` (recreate the database and seed) about 2.4 s.
 
 ## Screenshots
 
