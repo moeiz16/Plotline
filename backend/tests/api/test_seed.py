@@ -126,3 +126,17 @@ async def test_campaign_timeline_uses_readable_dates(client) -> None:
     messages = [t["message"] for t in (await client.get(f"/api/v1/campaigns/{cid}")).json()["timeline"]]
     assert not any(re.search(r"\d{4}-\d{2}-\d{2}", m) for m in messages)
     assert any(re.search(r"due \d{1,2} [A-Z][a-z]{2} \d{4}", m) for m in messages)
+
+
+async def test_seeded_history_spans_weeks_and_still_verifies(client) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    await ensure_seeded()
+    await login(client)
+    items = (await client.get("/api/v1/audit?limit=200")).json()["items"]
+    seeded = [datetime.fromisoformat(i["createdAt"]) for i in items if i["action"] != "auth.login"]
+    assert min(seeded) < datetime.now(UTC) - timedelta(days=20)
+    assert len({t.date() for t in seeded}) > 10
+    plot = (await client.get("/api/v1/plots")).json()[0]
+    assert datetime.fromisoformat(plot["assessedAt"]) < datetime.now(UTC) - timedelta(hours=12)
+    assert (await client.get("/api/v1/audit/verify")).json()["valid"] is True

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -21,13 +21,25 @@ from app.core.permissions import permissions_for
 from app.core.security import hash_password
 from app.core.text import human_date
 from app.db.base import utcnow
-from app.db.models.domain import Campaign, CampaignEvent, CampaignMember, Plot, Product, Shipment, Supplier
-from app.db.models.platform import Membership, Organization, User
+from app.db.models.domain import (
+    Assessment,
+    Campaign,
+    CampaignEvent,
+    CampaignMember,
+    Dds,
+    DdsSubmission,
+    Plot,
+    Product,
+    Shipment,
+    Supplier,
+)
+from app.db.models.platform import AuditLog, Membership, Organization, User
 from app.services import dds as dds_svc
 from app.services import domain
 from app.services import plots as plot_svc
 from app.services import shipments as shipment_svc
 from app.services import suppliers as supplier_svc
+from app.services.audit import GENESIS, compute_hash
 from app.services.auth import AVATAR_COLORS, DEFAULT_ORG_SETTINGS
 from app.workflows.types import campaign_workflow_id
 
@@ -252,6 +264,7 @@ async def seed_demo(db: AsyncSession) -> Seeded:
     # ── Supplier campaign ──
     await _seed_campaign(db, org, users, suppliers)
     await db.flush()
+    await _spread_history(db, org)
     log.info("demo_seeded", plots=len(plots), suppliers=len(suppliers))
     return Seeded(org=org, users=users, suppliers=suppliers, plots=plots)
 
@@ -391,7 +404,9 @@ async def _seed_campaign(
         ]
         if stage == "reminded":
             m.reminders_sent = 1
-            events.append((started + timedelta(days=7), "reminded", f"Reminder 1 sent to {s.name}."))
+            events.append(
+                (started + timedelta(days=7), "reminded", f"Reminder 1 to {s.name} sent automatically.")
+            )
         if stage in ("awaiting_review", "approved"):
             m.submitted_at = started + timedelta(days=5)
             events += [
@@ -419,4 +434,80 @@ async def _seed_campaign(
                 )
             )
         m.last_event_at = events[-1][0]
+    await db.flush()
+
+
+# Seeded history is spread over working hours of the past weeks, so the demo reads like an organisation that
+# has been onboarding suppliers since early autumn rather than one created a minute ago.
+HISTORY_DAYS = 34
+_WORKDAY_MIN = 9 * 60
+
+
+def _history_times(n: int, now: datetime) -> list[datetime]:
+    start = (now - timedelta(days=HISTORY_DAYS)).replace(hour=8, minute=30, second=0, microsecond=0)
+    total = (HISTORY_DAYS - 2) * _WORKDAY_MIN
+    out = []
+    for i in range(n):
+        pos = int(total * i / max(n - 1, 1))
+        out.append(start + timedelta(days=pos // _WORKDAY_MIN, minutes=pos % _WORKDAY_MIN))
+    return out
+
+
+async def _spread_history(db: AsyncSession, org: Organization) -> None:
+    """Backdate the seeded records and re-link the audit chain in the same order (it still verifies)."""
+    rows = list(
+        (await db.execute(select(AuditLog).where(AuditLog.org_id == org.id).order_by(AuditLog.id))).scalars()
+    )
+    if not rows:
+        return
+    now = utcnow()
+    times = _history_times(len(rows), now)
+    plots = {str(p.id): p for p in (await db.execute(select(Plot).where(Plot.org_id == org.id))).scalars()}
+    org_assessments = await db.execute(select(Assessment).where(Assessment.org_id == org.id))
+    assessments = {a.plot_id: a for a in org_assessments.scalars()}
+    by_type: dict[str, Any] = {"shipment": Shipment, "supplier": Supplier, "product": Product, "dds": Dds}
+    prev = GENESIS
+    last: AuditLog | None = None
+    for row, at in zip(rows, times, strict=True):
+        if row.action == "plot.assessed" and last is not None and last.resource_id == row.resource_id:
+            at = last.created_at + timedelta(minutes=2)  # checked straight after it was mapped
+        row.created_at = at
+        last = row
+        rid = row.resource_id
+        if row.action == "plot.created" and rid in plots:
+            plots[rid].created_at = plots[rid].updated_at = at
+        elif row.action == "plot.assessed" and rid in plots:
+            p = plots[rid]
+            a = assessments.get(p.id)
+            if a is not None:
+                a.created_at = at
+            p.assessed_at = p.updated_at = at
+        elif row.action.endswith(".created") and row.resource_type in by_type and rid:
+            obj = await db.get(by_type[row.resource_type], uuid.UUID(rid))
+            if obj is not None:
+                obj.created_at = obj.updated_at = at
+        elif row.action == "dds.submitted" and rid:
+            d = await db.get(Dds, uuid.UUID(rid))
+            if d is not None:
+                d.submitted_at = d.updated_at = at
+                subs = await db.execute(select(DdsSubmission).where(DdsSubmission.dds_id == d.id))
+                for sub in subs.scalars():
+                    sub.at = at
+                shipment = await db.get(Shipment, d.shipment_id)
+                if shipment is not None:
+                    shipment.updated_at = at
+        row.prev_hash = prev
+        row.hash = compute_hash(prev, row)
+        prev = row.hash
+    latest: dict[uuid.UUID, datetime] = {}
+    for p in plots.values():
+        latest[p.supplier_id] = max(latest.get(p.supplier_id, p.created_at), p.created_at)
+    for sid, at in latest.items():
+        s = await db.get(Supplier, sid)
+        if s is not None and s.last_submission_at is not None:
+            s.last_submission_at = at + timedelta(hours=2)
+    joined = times[0] - timedelta(days=21)
+    org.created_at = joined
+    for m in (await db.execute(select(Membership).where(Membership.org_id == org.id))).scalars():
+        m.created_at = joined
     await db.flush()

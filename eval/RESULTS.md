@@ -1,11 +1,11 @@
 # Plotline evaluation gates
 
-Run 2026-11-13T21:14:49+00:00 · offline (bundled landscape) · overall: **PASS**
+Run 2026-11-13T21:54:45+00:00 · offline (bundled landscape) · overall: **PASS**
 
 | Gate | Result | Detail |
 |---|---|---|
 | Geometry rules | PASS | 16/16 labelled EUDR geometry cases |
-| Verdict rules | PASS | 35/35 (9 rule-table cases + 26 demo plots); 12.4 ms per assessment |
+| Verdict rules | PASS | 35/35 (9 rule-table cases + 26 demo plots); 10.3 ms per assessment |
 | Reproducibility | PASS | 9/9 re-assessments identical (hashes, embedding) |
 | Mass balance | PASS | 10/10 labelled shipment cases |
 | Change signal | PASS | held-out AUC >= 0.6, NumPy = PyTorch, demo landscape levels |

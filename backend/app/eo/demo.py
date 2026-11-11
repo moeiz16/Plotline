@@ -126,8 +126,8 @@ DEMO_PLOTS: list[DemoPlot] = [
         "coop-nawa",
         "cocoa",
         "CI",
-        5.783412,
-        -6.611873,
+        5.801736,
+        -6.701248,
         4.6,
         "compliant_farmland",
         3,
@@ -147,14 +147,14 @@ DEMO_PLOTS: list[DemoPlot] = [
         "CI-CAV-0003", "cavally-cocoa", "cocoa", "CI", 6.081944, -7.512270, 4.9, "non_compliant_regrowth", 17
     ),
     # Western North Cocoa Farmers Union (Sefwi Wiawso / Juaboso, Ghana) - cocoa
-    _poly("GH-WNR-0001", "wn-cocoa-union", "cocoa", "GH", 6.214877, -2.486135, 3.8, "compliant_farmland", 2),
+    _poly("GH-WNR-0001", "wn-cocoa-union", "cocoa", "GH", 6.261493, -2.531874, 3.8, "compliant_farmland", 2),
     _poly(
         "GH-WNR-0002",
         "wn-cocoa-union",
         "cocoa",
         "GH",
-        6.331502,
-        -2.834718,
+        6.30147,
+        -2.80152,
         5.1,
         "compliant_low_precision",
         9,
@@ -166,15 +166,15 @@ DEMO_PLOTS: list[DemoPlot] = [
     _poly("GH-WNR-0004", "wn-cocoa-union", "cocoa", "GH", 6.158240, -2.611087, 6.4, "review_land_change", 6),
     # Cooperativa Cafés do Sul de Minas (Varginha / Três Pontas, Minas Gerais, Brazil) - coffee
     _poly(
-        "BR-SMC-0001", "sul-minas-cafe", "coffee", "BR", -21.548716, -45.431209, 24.5, "compliant_farmland", 4
+        "BR-SMC-0001", "sul-minas-cafe", "coffee", "BR", -21.501287, -45.479634, 24.5, "compliant_farmland", 4
     ),
     _poly(
         "BR-SMC-0002",
         "sul-minas-cafe",
         "coffee",
         "BR",
-        -21.371152,
-        -45.506371,
+        -21.331846,
+        -45.548217,
         31.2,
         "compliant_farmland",
         11,
@@ -188,25 +188,25 @@ DEMO_PLOTS: list[DemoPlot] = [
         "rondonia-robusta",
         "coffee",
         "BR",
-        -11.431275,
-        -61.447360,
+        -11.401962,
+        -61.389514,
         12.6,
         "compliant_old_clearing",
         19,
     ),
     _poly(
-        "BR-ROB-0002", "rondonia-robusta", "coffee", "BR", -10.884102, -61.951538, 16.4, "non_compliant", 23
+        "BR-ROB-0002", "rondonia-robusta", "coffee", "BR", -10.951284, -62.029573, 16.4, "non_compliant", 23
     ),
     _poly("BR-ROB-0003", "rondonia-robusta", "coffee", "BR", -11.207733, -61.702415, 9.8, "unassessed", 10),
     # Gayo Highland Coffee Cooperative (Takengon, Aceh Tengah, Indonesia) - coffee
     _poly(
-        "ID-GAY-0001", "gayo-highland", "coffee", "ID", 4.618904, 96.847215, 2.4, "compliant_agroforest", 15
+        "ID-GAY-0001", "gayo-highland", "coffee", "ID", 4.561327, 96.869841, 2.4, "compliant_agroforest", 15
     ),
     _poly("ID-GAY-0002", "gayo-highland", "coffee", "ID", 4.574238, 96.912604, 2.9, "review_small_loss", 13),
     _poly("ID-GAY-0003", "gayo-highland", "coffee", "ID", 4.661571, 96.790033, 1.8, "unassessed", 16),
     # Koperasi Kakao Sulawesi (Luwu Utara, South Sulawesi, Indonesia) - cocoa
     _poly(
-        "ID-SUL-0001", "sulawesi-kakao", "cocoa", "ID", -2.551337, 120.331408, 2.2, "compliant_farmland", 18
+        "ID-SUL-0001", "sulawesi-kakao", "cocoa", "ID", -2.598614, 120.358127, 2.2, "compliant_farmland", 18
     ),
     _point("ID-SUL-0002", "sulawesi-kakao", "cocoa", "ID", -2.602815, 120.287166, 1.6, "compliant_point"),
     _poly(
@@ -214,10 +214,10 @@ DEMO_PLOTS: list[DemoPlot] = [
     ),
     # Cooperativa Agraria San Martín (Moyobamba / Lamas, Peru) - coffee and cocoa
     _poly(
-        "PE-SMA-0001", "san-martin-coop", "coffee", "PE", -6.031584, -76.972407, 3.7, "compliant_farmland", 22
+        "PE-SMA-0001", "san-martin-coop", "coffee", "PE", -6.078315, -76.931642, 3.7, "compliant_farmland", 22
     ),
     _poly(
-        "PE-SMA-0002", "san-martin-coop", "cocoa", "PE", -6.418221, -76.518930, 4.2, "review_small_loss", 1
+        "PE-SMA-0002", "san-martin-coop", "cocoa", "PE", -6.391857, -76.481269, 4.2, "review_small_loss", 1
     ),
     _poly("PE-SMA-0003", "san-martin-coop", "coffee", "PE", -6.102776, -76.893051, 2.6, "unassessed", 24),
 ]
