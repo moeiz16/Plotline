@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import timedelta
+from typing import Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -36,7 +37,7 @@ from app.workflows.types import (
     member_workflow_id,
 )
 
-_ACTIVITY = {
+_ACTIVITY: dict[str, Any] = {
     "start_to_close_timeout": timedelta(minutes=2),
     "retry_policy": RetryPolicy(
         initial_interval=timedelta(seconds=2), maximum_interval=timedelta(minutes=1), maximum_attempts=10

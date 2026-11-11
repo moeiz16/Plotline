@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import uuid
 from collections import Counter
+from collections.abc import Callable
 from datetime import UTC, date, datetime, time
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -161,13 +163,13 @@ async def reminder_due(inp: ReminderIn) -> ReminderOut:
                 permission="campaigns:write",
             )
         else:
-            how = "Manual reminder" if inp.manual else "Reminder"
+            how = "sent by your team" if inp.manual else "sent automatically"
             update = add_event(
                 db,
                 campaign,
                 member,
                 "reminded",
-                f"{how} {member.reminders_sent} sent to {supplier.name}.",
+                f"Reminder {member.reminders_sent} to {supplier.name} {how}.",
                 stage="reminded",
             )
         stage = member.stage
@@ -282,7 +284,7 @@ async def complete_campaign(campaign_id: str) -> None:
     await announce([update])
 
 
-ALL_ACTIVITIES = [
+ALL_ACTIVITIES: list[Callable[..., Any]] = [
     load_member,
     request_evidence,
     reminder_due,
