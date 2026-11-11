@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.errors import AppError, conflict, not_found
 from app.core.metrics import PORTAL_UPLOADS
 from app.core.security import hash_token
@@ -43,10 +45,20 @@ async def resolve(db: AsyncSession, token: str) -> tuple[Supplier, Organization]
     return s, org
 
 
+def _submitted_on_this_link(s: Supplier) -> bool:
+    """Outside a campaign, a submission closes the current link; a freshly issued link opens a new round."""
+    if not s.last_submission_at:
+        return False
+    if not s.portal_expires_at:
+        return True
+    issued_at = s.portal_expires_at - timedelta(days=get_settings().portal_link_ttl_days)
+    return s.last_submission_at >= issued_at
+
+
 async def status(db: AsyncSession, s: Supplier) -> tuple[str, dict | None]:
     found = await campaign_svc.running_member_for(db, s)
     if not found:
-        return ("submitted" if s.last_submission_at else "open"), None
+        return ("submitted" if _submitted_on_this_link(s) else "open"), None
     c, m = found
     info = {"campaignName": c.name, "dueDate": c.due_date.isoformat(), "commodity": c.commodity}
     return ("submitted" if m.stage in CLOSED_STAGES else "open"), info
@@ -73,8 +85,8 @@ async def view(db: AsyncSession, s: Supplier, org: Organization) -> dict:
 
 
 async def ensure_open(db: AsyncSession, s: Supplier) -> None:
-    st, info = await status(db, s)
-    if st == "submitted" and info is not None:
+    st, _info = await status(db, s)
+    if st == "submitted":
         raise conflict(
             "portal_submitted", "Your plots were submitted and are being checked. Changes are closed for now."
         )

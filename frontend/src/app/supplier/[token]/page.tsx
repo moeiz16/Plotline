@@ -95,7 +95,7 @@ export default function SupplierPortalPage() {
   const submit = usePortalSubmit(token);
   const [confirm, setConfirm] = useState(false);
   const p = q.data;
-  const submitted = !!p?.submittedAt;
+  const submitted = p?.status === "submitted";
 
   return (
     <div className="min-h-dvh">

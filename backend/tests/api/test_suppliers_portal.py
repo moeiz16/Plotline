@@ -72,6 +72,11 @@ async def test_portal_flow_without_campaign(owner, make_client) -> None:
     out = r.json()
     assert out["status"] == "submitted" and out["submittedAt"]
     assert out["plots"][0]["verdict"] == "compliant"  # assessed straight away without a campaign
+    # The link that was used is closed after sending; a fresh link opens a new round of uploads.
+    r = await anon.post(f"/api/v1/portal/{token}/submit")
+    assert r.status_code == 409 and r.json()["code"] == "portal_submitted"
+    fresh = (await anon.get(f"/api/v1/portal/{await _portal(owner, sup)}")).json()
+    assert fresh["status"] == "open" and fresh["submittedAt"] and len(fresh["plots"]) == 1
     detail = (await owner.get(f"/api/v1/suppliers/{sup['id']}")).json()
     assert detail["status"] == "active" and detail["lastSubmissionAt"]
     labels = [i["label"] for i in (await owner.get("/api/v1/audit")).json()["items"]]
