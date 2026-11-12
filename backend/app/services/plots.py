@@ -176,9 +176,26 @@ async def list_plots(db: AsyncSession, ctx: RequestContext, **filters: Any) -> l
     return [plot_item(p, name) for p, name in (await db.execute(_filtered(ctx, **filters))).all()]
 
 
+def _loss_years(metrics: dict | None) -> tuple[dict[str, float], int | None]:
+    """Forest loss per year after the cut-off and the first year with any loss (None when there is none)."""
+    by_year = {y: float(v) for y, v in ((metrics or {}).get("lossByYear") or {}).items() if v}
+    years = [int(y) for y, v in by_year.items() if v > 0 and str(y).isdigit()]
+    return by_year, min(years) if years else None
+
+
 async def plots_geojson(db: AsyncSession, ctx: RequestContext, **filters: Any) -> dict:
+    rows = (await db.execute(_filtered(ctx, **filters))).all()
+    latest_ids = [p.latest_assessment_id for p, _ in rows if p.latest_assessment_id]
+    metrics: dict[uuid.UUID, dict] = {}
+    if latest_ids:
+        found = await db.execute(
+            select(Assessment.id, Assessment.metrics).where(Assessment.id.in_(latest_ids))
+        )
+        metrics = {aid: m or {} for aid, m in found.all()}
     features = []
-    for p, name in (await db.execute(_filtered(ctx, **filters))).all():
+    for p, name in rows:
+        latest = metrics.get(p.latest_assessment_id) if p.latest_assessment_id else None
+        loss_by_year, loss_first_year = _loss_years(latest)
         geom = p.geometry
         if p.kind == "point" or geom.get("type") == "Point":
             geom = domain.as_polygon(geom, p.declared_area_ha or p.area_ha)
@@ -195,6 +212,8 @@ async def plots_geojson(db: AsyncSession, ctx: RequestContext, **filters: Any) -
                     "supplierName": name,
                     "areaHa": round(p.area_ha, 2),
                     "kind": p.kind,
+                    "lossFirstYear": loss_first_year,
+                    "lossByYear": loss_by_year,
                 },
             }
         )

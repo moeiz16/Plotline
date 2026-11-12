@@ -68,7 +68,23 @@ async def test_map_returns_feature_collection_with_point_circles(owner) -> None:
         "supplierName",
         "areaHa",
         "kind",
+        "lossFirstYear",
+        "lossByYear",
     }
+    assert by_kind["polygon"]["properties"]["lossFirstYear"] is None
+    assert by_kind["polygon"]["properties"]["lossByYear"] == {}
+
+
+async def test_map_features_carry_first_loss_year(owner) -> None:
+    dp = demo_by_scenario("non_compliant")[0]
+    sup = await create_supplier(owner, country=dp.country, commodities=[dp.commodity])
+    plot = await create_plot_from_demo(owner, sup["id"], dp)
+    loss = {y: v for y, v in plot["latestAssessment"]["lossByYear"].items() if v > 0}
+    (feature,) = (await owner.get("/api/v1/plots/map")).json()["features"]
+    props = feature["properties"]
+    assert isinstance(props["lossFirstYear"], int)
+    assert props["lossFirstYear"] == min(int(y) for y in loss) >= 2021
+    assert props["lossByYear"] == loss
 
 
 async def test_validate_does_not_write(owner) -> None:
