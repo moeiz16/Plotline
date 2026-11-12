@@ -2,14 +2,17 @@
   "source": "Commission Implementing Regulation (EU) 2025/1093 of 22 May 2025 laying down rules for the application of Regulation (EU) 2023/1115 as regards the classification of countries (country benchmarking), Annex",
   "url": "https://eur-lex.europa.eu/eli/reg_impl/2025/1093/oj",
   "version": "eu-benchmarking-2025-1093",
-  "note": "Static transcription for this application. Countries listed in the Annex as low or high risk are classified accordingly; every other country is standard risk (Art. 29(2) of Regulation (EU) 2023/1115). The low-risk list below is a partial transcription; verify against the Annex before relying on it.",
+  "note": "Static transcription of the Annex for this application: 140 low-risk and 4 high-risk countries, checked against the Annex text on 14 Nov 2026 (no amending act found). Every country not listed is standard risk (Art. 1(2) of the Implementing Regulation; Art. 29(2) of Regulation (EU) 2023/1115). The Commission reviews the list periodically: verify against the current Annex before relying on it.",
   "default": "standard",
   "high": ["BY", "KP", "MM", "RU"],
   "low": [
-    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU",
-    "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
-    "IS", "LI", "NO", "CH", "GB", "AD", "MC", "SM", "VA",
-    "US", "CA", "AU", "NZ", "JP", "KR", "CN", "IN", "VN", "GH"
+    "AD", "AE", "AF", "AG", "AL", "AM", "AT", "AU", "AZ", "BA", "BB", "BD", "BE", "BG", "BH", "BI", "BN", "BS", "BT", "CA",
+    "CF", "CG", "CH", "CL", "CN", "CR", "CU", "CV", "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EE", "EG", "ES", "FI",
+    "FJ", "FM", "FR", "GA", "GB", "GD", "GE", "GH", "GR", "GY", "HR", "HU", "IE", "IN", "IQ", "IR", "IS", "IT", "JM", "JO",
+    "JP", "KE", "KG", "KI", "KM", "KN", "KR", "KW", "KZ", "LA", "LB", "LC", "LI", "LK", "LS", "LT", "LU", "LV", "LY", "MA",
+    "MC", "MD", "ME", "MG", "MH", "MK", "ML", "MN", "MT", "MU", "MV", "NL", "NO", "NP", "NR", "NZ", "OM", "PG", "PH", "PL",
+    "PS", "PT", "PW", "QA", "RO", "RS", "RW", "SA", "SB", "SC", "SE", "SG", "SI", "SK", "SM", "SR", "SS", "ST", "SY", "SZ",
+    "TG", "TH", "TJ", "TL", "TM", "TN", "TO", "TR", "TT", "TV", "UA", "US", "UY", "UZ", "VC", "VN", "VU", "WS", "YE", "ZA"
   ],
   "commodities": {
     "AR": ["soy", "cattle"],

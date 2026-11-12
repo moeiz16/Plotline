@@ -33,17 +33,35 @@ def test_country_names() -> None:
 @pytest.mark.parametrize(
     "code,tier",
     [
+        # Low risk: listed in the Annex of Implementing Regulation (EU) 2025/1093.
         ("GH", "low"),
         ("VN", "low"),
         ("IN", "low"),
         ("CN", "low"),
         ("US", "low"),
         ("DE", "low"),
+        ("TG", "low"),
+        ("KE", "low"),
+        ("PG", "low"),
+        ("TH", "low"),
+        ("LA", "low"),
+        ("CR", "low"),
+        ("UY", "low"),
+        ("CG", "low"),
+        # Standard risk: producer countries not listed in the Annex.
         ("BR", "standard"),
         ("CI", "standard"),
         ("ID", "standard"),
         ("PE", "standard"),
         ("MY", "standard"),
+        ("CO", "standard"),
+        ("CM", "standard"),
+        ("NG", "standard"),
+        ("EC", "standard"),
+        ("CD", "standard"),
+        ("PY", "standard"),
+        ("VA", "standard"),
+        # High risk.
         ("BY", "high"),
         ("MM", "high"),
         ("KP", "high"),
@@ -54,6 +72,15 @@ def test_country_names() -> None:
 )
 def test_risk_tiers(code: str, tier: str) -> None:
     assert risk_tier(code) == tier
+
+
+def test_benchmarking_annex_counts() -> None:
+    """The Annex lists 140 low-risk and 4 high-risk countries; every other country is standard risk."""
+    rows = list_countries()
+    tiers = [r["riskTier"] for r in rows]
+    assert tiers.count("high") == 4
+    assert tiers.count("low") == 140
+    assert tiers.count("standard") == len(rows) - 144
 
 
 def test_list_countries_shape() -> None:

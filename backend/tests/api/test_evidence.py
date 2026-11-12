@@ -99,7 +99,7 @@ CTX = {
     "suppliers": ["Coop A", "Union B"],
     "countries": [
         {"name": "Côte d'Ivoire", "riskTier": "standard"},
-        {"name": "Ghana", "riskTier": "standard"},
+        {"name": "Cameroon", "riskTier": "standard"},
     ],
     "verdicts": {"compliant": 4, "needsReview": 0, "nonCompliant": 0, "pending": 0},
     "reviewed": 1,
@@ -115,7 +115,7 @@ def test_deterministic_summary_ready_shipment() -> None:
     assert "four plots (23.5 ha)" in text and "two suppliers" in text
     assert "none shows forest cleared after 31 December 2020" in text
     assert "One plot was confirmed by a reviewer" in text
-    assert "Côte d'Ivoire and Ghana are standard-risk" in text
+    assert "Côte d'Ivoire and Cameroon are standard-risk" in text
     assert "negligible risk" in text
     assert is_plain_language(text)
 
