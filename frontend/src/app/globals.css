@@ -3,107 +3,181 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Plotline design tokens: earthy, calm and flat. See DESIGN.md.
-   One sans family (Instrument Sans), hairline borders, one accent (pine).
-   Verdict colours are reserved for plot and shipment states and are always
-   paired with an icon and a label.
+   Plotline · Field Atlas design tokens. See DESIGN.md §4.
+   Light = "map paper": warm survey paper, slate ink, one marker orange.
+   Dark  = "night satellite": blue-black ground, paper-coloured ink.
+   Verdicts are carried by SHAPE first (filled / half / hatched / dashed
+   square glyphs) and colour second. Square corners, ruled hairlines.
+
+   Naming: new code uses the atlas names (paper, sheet, ink, rule, marker).
+   The older names (bg, surface, fg, border, brand) are kept as aliases so
+   every existing page still renders in the new language.
    ────────────────────────────────────────────────────────────────────────── */
 :root {
-  --bg: #f7f5f0;
-  --surface: #fdfcf9;
-  --surface-2: #f1eee7;
-  --surface-3: #e8e4da;
-  --border: #e2ddd2;
-  --border-strong: #cdc6b7;
-  --fg: #1f1d1a;
-  --fg-muted: #55504a;
-  --fg-subtle: #6b665d;
+  /* Ground */
+  --paper: #ece7db; /* canvas: the map sheet */
+  --sheet: #f6f2e9; /* ledgers, documents, panels laid on the paper */
+  --sheet-2: #e3ddcf; /* tracks, fills, header bands */
+  --sheet-3: #d8d1c0; /* pressed, skeleton */
+  --rule: #cdc5b2; /* hairline rules */
+  --rule-strong: #a89f89; /* inputs, emphasised rules */
+  /* Ink */
+  --ink: #1e2a33; /* slate ink */
+  --ink-muted: #4a5560;
+  --ink-subtle: #58626c;
+  /* Marker orange: the one accent (actions, focus, active tab, deadline stake) */
+  --marker: #d4561c; /* strokes, flags, map highlight (non-text) */
+  --marker-ink: #a63a0c; /* orange text on paper (AA) */
+  --marker-fill: #b8430e; /* button fill, white text on it is AA */
+  --marker-hover: #9c380b;
+  --marker-soft: #f3dccb;
+  --marker-contrast: #ffffff;
+  --ring: #c24d14;
 
-  --brand: #1f5c4d;
-  --brand-hover: #184a3e;
-  --brand-soft: #e4eeea;
-  --brand-fg: #184a3e;
-  --brand-contrast: #ffffff;
-  --ring: #2f7a68;
+  /* Verdicts */
+  --compliant: #2d6a3e; /* forest green */
+  --compliant-soft: #dde7d6;
+  --compliant-fg: #24573a;
+  --review: #9a6a06; /* ochre */
+  --review-soft: #efe0bd;
+  --review-fg: #7f5600;
+  --noncompliant: #a8213a; /* crimson + hatch */
+  --noncompliant-soft: #f0d6d6;
+  --noncompliant-fg: #8e1b31;
+  --pending: #56626f; /* slate, hollow / dashed */
+  --pending-soft: #e2e2dc;
+  --pending-fg: #46525e;
 
-  --compliant: #2f7a4e;
-  --compliant-soft: #e6f1e9;
-  --compliant-fg: #22603b;
-  --review: #c28a17;
-  --review-soft: #faf0d9;
-  --review-fg: #805600;
-  --noncompliant: #b23b2e;
-  --noncompliant-soft: #f8e6e2;
-  --noncompliant-fg: #8f2e23;
-  --pending: #5b6b86;
-  --pending-soft: #eceef2;
-  --pending-fg: #46546b;
+  /* Map + glass */
+  --panel: rgb(246 242 233 / 0.88); /* floating ledger panel on the map */
+  --panel-border: rgb(30 42 51 / 0.16);
+  --scrim: rgb(30 42 51 / 0.38);
+  --contour: rgb(30 42 51 / 0.09);
+  --grain-opacity: 0.35;
 
-  --shadow-pop: 0 10px 28px -12px rgb(31 29 26 / 0.18), 0 0 0 1px var(--border);
+  --shadow-pop: 0 1px 0 rgb(30 42 51 / 0.06), 0 14px 32px -16px rgb(30 42 51 / 0.32);
+  --shadow-sheet: 0 1px 0 rgb(30 42 51 / 0.08), 0 24px 48px -28px rgb(30 42 51 / 0.38);
 
-  --dur-fast: 150ms;
-  --dur: 200ms;
+  /* Motion: "survey in progress" */
+  --dur-tick: 120ms;
+  --dur-fast: 180ms;
+  --dur: 260ms;
+  --dur-slow: 520ms;
+  --dur-draw: 1100ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-survey: cubic-bezier(0.5, 0, 0.1, 1);
+
+  /* Legacy raw aliases for older inline styles (var(--surface) etc.). Resolve per theme. */
+  --bg: var(--paper);
+  --surface: var(--sheet);
+  --surface-2: var(--sheet-2);
+  --surface-3: var(--sheet-3);
+  --border: var(--rule);
+  --border-strong: var(--rule-strong);
+  --fg: var(--ink);
+  --fg-muted: var(--ink-muted);
+  --fg-subtle: var(--ink-subtle);
+  --brand: var(--marker-fill);
+  --brand-hover: var(--marker-hover);
+  --brand-soft: var(--marker-soft);
+  --brand-fg: var(--marker-ink);
+  --brand-contrast: var(--marker-contrast);
 
   color-scheme: light;
 }
 
 .dark {
-  --bg: #141412;
-  --surface: #1b1a17;
-  --surface-2: #22211d;
-  --surface-3: #2c2a25;
-  --border: #2f2d28;
-  --border-strong: #45423a;
-  --fg: #ece8df;
-  --fg-muted: #b5aea0;
-  --fg-subtle: #9a9385;
+  --paper: #0b1014;
+  --sheet: #11181e;
+  --sheet-2: #18212a;
+  --sheet-3: #212c36;
+  --rule: #26323d;
+  --rule-strong: #3d4b58;
+  --ink: #e9e3d3;
+  --ink-muted: #aeb4b6;
+  --ink-subtle: #8e979d;
+  --marker: #ff7a3d;
+  --marker-ink: #ff8c55;
+  --marker-fill: #ff7a3d;
+  --marker-hover: #ff9361;
+  --marker-soft: #2d1a10;
+  --marker-contrast: #140a04;
+  --ring: #ff8c55;
 
-  --brand: #6fc0af;
-  --brand-hover: #86cdbe;
-  --brand-soft: #1b2e2a;
-  --brand-fg: #8fd4c5;
-  --brand-contrast: #0f1d1a;
-  --ring: #6fc0af;
+  --compliant: #6cc08a;
+  --compliant-soft: #142419;
+  --compliant-fg: #8fd3a7;
+  --review: #e2b04c;
+  --review-soft: #2a2110;
+  --review-fg: #ecc574;
+  --noncompliant: #f27382;
+  --noncompliant-soft: #2e151a;
+  --noncompliant-fg: #f797a2;
+  --pending: #94a2b1;
+  --pending-soft: #1b232b;
+  --pending-fg: #b3bfcb;
 
-  --compliant: #5db386;
-  --compliant-soft: #18291f;
-  --compliant-fg: #82cba3;
-  --review: #e0a63e;
-  --review-soft: #2e2413;
-  --review-fg: #ecbd68;
-  --noncompliant: #e26a57;
-  --noncompliant-soft: #34201c;
-  --noncompliant-fg: #ef9282;
-  --pending: #8e9dba;
-  --pending-soft: #222630;
-  --pending-fg: #adb9cf;
+  --panel: rgb(17 24 30 / 0.84);
+  --panel-border: rgb(233 227 211 / 0.12);
+  --scrim: rgb(4 7 10 / 0.6);
+  --contour: rgb(233 227 211 / 0.07);
+  --grain-opacity: 0.18;
 
-  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / 0.6), 0 0 0 1px var(--border-strong);
+  --shadow-pop: 0 0 0 1px rgb(233 227 211 / 0.06), 0 18px 40px -16px rgb(0 0 0 / 0.8);
+  --shadow-sheet: 0 0 0 1px rgb(233 227 211 / 0.06), 0 30px 60px -30px rgb(0 0 0 / 0.9);
 
   color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-serif: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* Legacy alias: the body face. Plotline has no sans; prose is serif. */
+  --font-sans: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-fg: var(--fg);
-  --color-muted: var(--fg-muted);
-  --color-subtle: var(--fg-subtle);
+  /* Slightly larger steps: Newsreader has a small x-height. */
+  --text-xs: 0.78125rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.90625rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1.03125rem;
+  --text-base--line-height: 1.55;
 
-  --color-brand: var(--brand);
-  --color-brand-hover: var(--brand-hover);
-  --color-brand-soft: var(--brand-soft);
-  --color-brand-fg: var(--brand-fg);
-  --color-brand-contrast: var(--brand-contrast);
+  /* Atlas names */
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-sheet-2: var(--sheet-2);
+  --color-sheet-3: var(--sheet-3);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-marker: var(--marker);
+  --color-marker-ink: var(--marker-ink);
+  --color-marker-fill: var(--marker-fill);
+  --color-marker-hover: var(--marker-hover);
+  --color-marker-soft: var(--marker-soft);
+  --color-marker-contrast: var(--marker-contrast);
+  --color-panel: var(--panel);
+  --color-panel-border: var(--panel-border);
+
+  /* Legacy aliases (kept so older pages render in the new language) */
+  --color-bg: var(--paper);
+  --color-surface: var(--sheet);
+  --color-surface-2: var(--sheet-2);
+  --color-surface-3: var(--sheet-3);
+  --color-border: var(--rule);
+  --color-border-strong: var(--rule-strong);
+  --color-fg: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-subtle: var(--ink-subtle);
+  --color-brand: var(--marker-fill);
+  --color-brand-hover: var(--marker-hover);
+  --color-brand-soft: var(--marker-soft);
+  --color-brand-fg: var(--marker-ink);
+  --color-brand-contrast: var(--marker-contrast);
   --color-ring: var(--ring);
 
   --color-compliant: var(--compliant);
@@ -119,35 +193,39 @@
   --color-pending-soft: var(--pending-soft);
   --color-pending-fg: var(--pending-fg);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  /* Square, surveyed corners. */
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
 
   --shadow-pop: var(--shadow-pop);
+  --shadow-sheet: var(--shadow-sheet);
 }
 
 @layer base {
   *,
   ::before,
   ::after {
-    border-color: var(--border);
+    border-color: var(--rule);
   }
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
   }
   body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
   ::selection {
-    background: color-mix(in srgb, var(--brand) 22%, transparent);
+    background: color-mix(in srgb, var(--marker) 26%, transparent);
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -165,17 +243,92 @@
   h3 {
     text-wrap: balance;
   }
+  code,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
 }
 
+/* ── Utilities ──────────────────────────────────────────────────────────── */
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }
 
-@utility scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+/** Mono small caps label: nav, column heads, eyebrows, stamps. */
+@utility label-caps {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  line-height: 1.3;
 }
 
+/** Data numerals: mono, tabular, slashed zero. */
+@utility numerals {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.01em;
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+/** Diagonal hatch in the current text colour (non-compliant, cleared land). */
+@utility hatch {
+  background-image: repeating-linear-gradient(135deg, currentColor 0 1.25px, transparent 1.25px 4.5px);
+}
+@utility hatch-noncompliant {
+  background-color: var(--noncompliant-soft);
+  background-image: repeating-linear-gradient(135deg, var(--noncompliant) 0 1.25px, transparent 1.25px 5px);
+}
+@utility hatch-faint {
+  background-image: repeating-linear-gradient(135deg, var(--rule) 0 1px, transparent 1px 6px);
+}
+
+/** Map-sheet graticule: faint grid like a survey sheet. */
+@utility graticule {
+  background-image:
+    linear-gradient(var(--contour) 1px, transparent 1px),
+    linear-gradient(90deg, var(--contour) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: -1px -1px;
+}
+
+/** Contour lines (topographic), for sign-in and marketing grounds. */
+@utility contours {
+  background-color: var(--paper);
+  background-image: var(--contour-svg);
+  background-size: 640px 640px;
+}
+
+/** Floating translucent panel laid over the map. */
+@utility panel-float {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-pop);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+
+/** Ruled rows (field book): a hairline under every row. */
+@utility ruled {
+  background-image: linear-gradient(var(--rule) 1px, transparent 1px);
+  background-size: 100% 2.25rem;
+  background-position: 0 calc(2.25rem - 1px);
+}
+
+:root {
+  --contour-svg: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640' fill='none' stroke='%231e2a33' stroke-opacity='0.11' stroke-width='1'><path d='M-20 120c80-40 150 30 240 0s170-90 260-40 120 70 180 40'/><path d='M-20 160c90-30 150 40 250 10s160-80 250-30 120 60 180 30'/><path d='M-20 205c100-25 150 45 255 20s150-70 240-25 130 55 185 25'/><path d='M-20 250c105-15 160 50 260 30s140-60 235-20 130 45 185 20'/><path d='M150 420c40-60 140-70 190-20s20 120-60 130-170-50-130-110z'/><path d='M120 425c50-90 175-100 245-30s30 165-80 175-215-60-165-145z'/><path d='M90 430c60-120 210-130 300-40s40 210-100 220-260-70-200-180z'/><path d='M-20 560c120-30 200 30 320 10s180-60 340-20'/><path d='M-20 600c120-20 210 30 330 15s180-50 330-15'/><path d='M470 330c30-30 90-25 100 15s-30 65-70 55-55-45-30-70z'/><path d='M445 330c40-55 130-50 150 15s-45 100-105 85-85-60-45-100z'/></svg>");
+}
+.dark {
+  --contour-svg: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640' fill='none' stroke='%23e9e3d3' stroke-opacity='0.08' stroke-width='1'><path d='M-20 120c80-40 150 30 240 0s170-90 260-40 120 70 180 40'/><path d='M-20 160c90-30 150 40 250 10s160-80 250-30 120 60 180 30'/><path d='M-20 205c100-25 150 45 255 20s150-70 240-25 130 55 185 25'/><path d='M-20 250c105-15 160 50 260 30s140-60 235-20 130 45 185 20'/><path d='M150 420c40-60 140-70 190-20s20 120-60 130-170-50-130-110z'/><path d='M120 425c50-90 175-100 245-30s30 165-80 175-215-60-165-145z'/><path d='M90 430c60-120 210-130 300-40s40 210-100 220-260-70-200-180z'/><path d='M-20 560c120-30 200 30 320 10s180-60 340-20'/><path d='M-20 600c120-20 210 30 330 15s180-50 330-15'/><path d='M470 330c30-30 90-25 100 15s-30 65-70 55-55-45-30-70z'/><path d='M445 330c40-55 130-50 150 15s-45 100-105 85-85-60-45-100z'/></svg>");
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────────────── */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -192,10 +345,11 @@
     opacity: 0;
   }
 }
+/* Panels unfold from their anchor like a folded field card. */
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(4px) scale(0.985);
+    transform: translateY(-3px) scaleY(0.97);
   }
   to {
     opacity: 1;
@@ -208,7 +362,7 @@
   }
   to {
     opacity: 0;
-    transform: scale(0.985);
+    transform: translateY(-2px);
   }
 }
 @keyframes sheet-in-left {
@@ -235,54 +389,135 @@
     transform: none;
   }
 }
-@keyframes shimmer {
-  0% {
-    opacity: 0.55;
+/* Ink: a row is written left to right. */
+@keyframes ink-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
   }
-  50% {
+  to {
     opacity: 1;
+    clip-path: inset(0 0 0 0);
   }
-  100% {
-    opacity: 0.55;
+}
+/* A boundary draws itself. Use with pathLength="1" on the SVG path. */
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* Skeleton: a survey sweep passes over an unread row. */
+@keyframes sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -100% 0;
   }
 }
 
 .skeleton {
-  background: var(--surface-3);
+  background-color: var(--sheet-2);
+  background-image: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--sheet) 70%, transparent) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
   border-radius: var(--radius-sm);
-  animation: shimmer 1.6s ease-in-out infinite;
+  animation: sweep 1.8s var(--ease-in-out) infinite;
 }
 
 .fade-in {
   animation: fade-in var(--dur) var(--ease-out);
 }
+.ink-in {
+  animation: ink-in var(--dur-slow) var(--ease-survey) both;
+}
+.draw-in {
+  stroke-dasharray: 1;
+  animation: draw var(--dur-draw) var(--ease-survey) both;
+}
 
-/* MapLibre: keep its controls on-brand and flat. */
+/* Paper grain: a very light fibre noise on the canvas. */
+.paper-grain {
+  position: relative;
+  isolation: isolate;
+}
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12  0 0 0 0 0.16  0 0 0 0 0.2  0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ── MapLibre: survey-instrument controls ───────────────────────────────── */
 .maplibregl-ctrl-group {
-  border-radius: var(--radius-md) !important;
-  box-shadow: 0 0 0 1px var(--border-strong) !important;
-  background: var(--surface) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--panel-border) !important;
+  background: var(--panel) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 .maplibregl-ctrl-group button + button {
-  border-top-color: var(--border) !important;
+  border-top-color: var(--rule) !important;
 }
 .dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
   filter: invert(0.9);
 }
 .maplibregl-ctrl-attrib {
-  font-family: var(--font-sans);
-  font-size: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--panel) !important;
 }
 .dark .maplibregl-ctrl-attrib {
-  background: rgb(27 26 23 / 0.8) !important;
-  color: var(--fg-muted);
+  background: rgb(17 24 30 / 0.8) !important;
+  color: var(--ink-muted);
 }
 .dark .maplibregl-ctrl-attrib a {
-  color: var(--fg-muted);
+  color: var(--ink-muted);
+}
+.maplibregl-ctrl-scale {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--panel) !important;
+  border-color: var(--ink) !important;
+  color: var(--ink) !important;
 }
 .maplibregl-canvas:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
+}
+
+/* Map hover card: a field tag. */
+.pl-popup .maplibregl-popup-content {
+  background: var(--sheet);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--rule-strong);
+  box-shadow: var(--shadow-pop);
+  padding: 7px 10px 8px;
+  font-family: var(--font-serif);
+}
+.pl-popup .maplibregl-popup-tip {
+  display: none;
+}
+.pl-popup-title {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.pl-popup-sub {
+  font-size: 13px;
+  color: var(--ink-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -294,31 +529,20 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .ink-in,
+  .draw-in {
+    animation: none !important;
+    clip-path: none !important;
+    stroke-dashoffset: 0 !important;
+    opacity: 1 !important;
+  }
 }
 
 @media print {
   body {
     background: #fff;
   }
-}
-
-/* Map hover card */
-.pl-popup .maplibregl-popup-content {
-  background: var(--surface);
-  color: var(--fg);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-pop);
-  padding: 8px 10px;
-  font-family: var(--font-sans);
-}
-.pl-popup .maplibregl-popup-tip {
-  display: none;
-}
-.pl-popup-title {
-  font-size: 13px;
-  font-weight: 600;
-}
-.pl-popup-sub {
-  font-size: 12px;
-  color: var(--fg-muted);
+  .paper-grain::before {
+    display: none;
+  }
 }

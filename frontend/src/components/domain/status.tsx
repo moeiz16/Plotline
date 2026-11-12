@@ -1,27 +1,6 @@
-import {
-  Ban,
-  BellRing,
-  CircleCheck,
-  CircleDashed,
-  CircleExclamationPoint,
-  CircleX,
-  ClockExclamationPoint,
-  Eye,
-  FilePen,
-  LoaderCircle,
-  Mail,
-  MessageSquareExclamationPoint,
-  OctagonX,
-  Send,
-  Shield,
-  ShieldCheck,
-  ShieldExclamationPoint,
-  Satellite,
-  TriangleExclamationPoint,
-  Upload,
-} from "lucide-react";
+/* Status vocabulary for Plotline. Every status renders as a GLYPH (shape) + mono caps label: never colour alone, never a pill. */
 import type { ReactNode } from "react";
-import { Badge, type Tone } from "@/components/ui/display";
+import { Badge, Glyph, type Tone } from "@/components/ui/display";
 import type {
   CampaignStage,
   CampaignStatus,
@@ -43,28 +22,28 @@ export const VERDICT_META: Record<Verdict, Meta & { short: string; description: 
     label: "Compliant",
     short: "Compliant",
     tone: "compliant",
-    icon: <CircleCheck aria-hidden />,
+    icon: <Glyph tone="compliant" />,
     description: "No forest on this plot was cleared after 31 December 2020.",
   },
   needs_review: {
     label: "Needs review",
     short: "Review",
     tone: "review",
-    icon: <CircleExclamationPoint aria-hidden />,
+    icon: <Glyph tone="review" />,
     description: "Something needs a closer look by a reviewer before this plot can be used.",
   },
   non_compliant: {
     label: "Non-compliant",
     short: "Non-compliant",
     tone: "noncompliant",
-    icon: <OctagonX aria-hidden />,
+    icon: <Glyph tone="noncompliant" />,
     description: "Forest on this plot was cleared after 31 December 2020. Product from it cannot be placed on the EU market.",
   },
   pending: {
     label: "Pending",
     short: "Pending",
     tone: "pending",
-    icon: <CircleDashed aria-hidden />,
+    icon: <Glyph tone="pending" />,
     description: "Not checked yet, or evidence is still missing.",
   },
 };
@@ -73,45 +52,57 @@ export const VERDICT_ORDER: Verdict[] = ["compliant", "needs_review", "non_compl
 
 /** Hex colours for map layers (canvas cannot read CSS variables). Readable on light, dark and satellite basemaps. */
 export const VERDICT_MAP_COLOR: Record<Verdict, string> = {
-  compliant: "#3f9a63",
-  needs_review: "#e3a12f",
-  non_compliant: "#d24b3a",
-  pending: "#8391ab",
+  compliant: "#3f8f55",
+  needs_review: "#d9a035",
+  non_compliant: "#c8324a",
+  pending: "#8a97a6",
+};
+
+/** Marker orange for map highlights (selected plot, survey stake). */
+export const MARKER_HEX = "#d4561c";
+
+/** Verdict → glyph tone. */
+export const VERDICT_TONE: Record<Verdict, Tone> = {
+  compliant: "compliant",
+  needs_review: "review",
+  non_compliant: "noncompliant",
+  pending: "pending",
 };
 
 export function VerdictBadge({ verdict, className }: { verdict: Verdict | null | undefined; className?: string }) {
   const m = VERDICT_META[verdict ?? "pending"] ?? VERDICT_META.pending;
   return (
-    <Badge tone={m.tone} icon={m.icon} className={className}>
+    <Badge tone={m.tone} className={className}>
       {m.label}
     </Badge>
   );
 }
 
-/** Small coloured dot + label for dense lists and legends. */
-export function VerdictDot({ verdict, className }: { verdict: Verdict; className?: string }) {
-  return <span aria-hidden className={cn("inline-block size-2.5 shrink-0 rounded-full", dotClass[verdict], className)} />;
+/** The verdict glyph alone (filled / half / hatched / dashed square) for dense lists and legends. */
+export function VerdictDot({ verdict, className, size = 10 }: { verdict: Verdict; className?: string; size?: number }) {
+  return <Glyph tone={VERDICT_TONE[verdict] ?? "pending"} size={size} className={className} />;
 }
 
+/** Fill classes for verdict bars. Non-compliant is always hatched, pending always dashed. */
 export const dotClass: Record<Verdict, string> = {
   compliant: "bg-compliant",
   needs_review: "bg-review",
-  non_compliant: "bg-noncompliant",
-  pending: "bg-pending",
+  non_compliant: "hatch-noncompliant",
+  pending: "border border-dashed border-pending bg-transparent",
 };
 
 /* ── Country risk tier ──────────────────────────────────────────────────── */
 export const RISK_META: Record<RiskTier, Meta> = {
-  low: { label: "Low risk", tone: "compliant", icon: <ShieldCheck aria-hidden /> },
-  standard: { label: "Standard risk", tone: "neutral", icon: <Shield aria-hidden /> },
-  high: { label: "High risk", tone: "noncompliant", icon: <ShieldExclamationPoint aria-hidden /> },
+  low: { label: "Low risk", tone: "compliant", icon: <Glyph tone="compliant" /> },
+  standard: { label: "Standard risk", tone: "neutral", icon: <Glyph tone="neutral" /> },
+  high: { label: "High risk", tone: "noncompliant", icon: <Glyph tone="noncompliant" /> },
 };
 
 export function RiskBadge({ tier, className }: { tier: RiskTier | null | undefined; className?: string }) {
   if (!tier) return null;
   const m = RISK_META[tier];
   return (
-    <Badge tone={m.tone} icon={m.icon} className={className}>
+    <Badge tone={m.tone} className={className}>
       {m.label}
     </Badge>
   );
@@ -119,21 +110,21 @@ export function RiskBadge({ tier, className }: { tier: RiskTier | null | undefin
 
 /* ── Land-change signal (second opinion from imagery) ────────────────────────── */
 export const CHANGE_META: Record<ChangeLevel, Meta> = {
-  low: { label: "Low", tone: "compliant", icon: <Satellite aria-hidden /> },
-  elevated: { label: "Elevated", tone: "review", icon: <Satellite aria-hidden /> },
-  high: { label: "High", tone: "noncompliant", icon: <Satellite aria-hidden /> },
+  low: { label: "Low", tone: "compliant", icon: <Glyph tone="compliant" /> },
+  elevated: { label: "Elevated", tone: "review", icon: <Glyph tone="review" /> },
+  high: { label: "High", tone: "noncompliant", icon: <Glyph tone="noncompliant" /> },
 };
 
 export function ChangeBadge({ level, className, prefix }: { level: ChangeLevel | null | undefined; className?: string; prefix?: string }) {
   if (!level)
     return (
-      <Badge tone="pending" icon={<CircleDashed aria-hidden />} className={className}>
+      <Badge tone="pending" className={className}>
         {prefix ? `${prefix}: ` : ""}Not available
       </Badge>
     );
   const m = CHANGE_META[level];
   return (
-    <Badge tone={m.tone} icon={m.icon} className={className}>
+    <Badge tone={m.tone} className={className}>
       {prefix ? `${prefix}: ` : ""}
       {m.label}
     </Badge>
@@ -142,16 +133,16 @@ export function ChangeBadge({ level, className, prefix }: { level: ChangeLevel |
 
 /* ── Shipments ──────────────────────────────────────────────────────────── */
 export const SHIPMENT_META: Record<ShipmentStatus, Meta> = {
-  draft: { label: "Draft", tone: "neutral", icon: <FilePen aria-hidden /> },
-  blocked: { label: "Blocked", tone: "noncompliant", icon: <Ban aria-hidden /> },
-  ready: { label: "Cleared to ship", tone: "compliant", icon: <CircleCheck aria-hidden /> },
-  submitted: { label: "Statement filed", tone: "brand", icon: <Send aria-hidden /> },
+  draft: { label: "Draft", tone: "neutral", icon: <Glyph tone="neutral" /> },
+  blocked: { label: "Blocked", tone: "noncompliant", icon: <Glyph tone="noncompliant" /> },
+  ready: { label: "Cleared to ship", tone: "compliant", icon: <Glyph tone="compliant" /> },
+  submitted: { label: "Statement filed", tone: "brand", icon: <Glyph tone="brand" /> },
 };
 
 export function ShipmentBadge({ status }: { status: ShipmentStatus }) {
   const m = SHIPMENT_META[status] ?? SHIPMENT_META.draft;
   return (
-    <Badge tone={m.tone} icon={m.icon}>
+    <Badge tone={m.tone}>
       {m.label}
     </Badge>
   );
@@ -159,17 +150,17 @@ export function ShipmentBadge({ status }: { status: ShipmentStatus }) {
 
 /* ── Due diligence statements ───────────────────────────────────────────── */
 export const DDS_META: Record<DdsStatus, Meta> = {
-  draft: { label: "Draft", tone: "neutral", icon: <FilePen aria-hidden /> },
-  submitted: { label: "Submitted (demo)", tone: "brand", icon: <Send aria-hidden /> },
-  accepted: { label: "Accepted (demo)", tone: "compliant", icon: <CircleCheck aria-hidden /> },
-  rejected: { label: "Rejected", tone: "noncompliant", icon: <CircleX aria-hidden /> },
+  draft: { label: "Draft", tone: "neutral", icon: <Glyph tone="neutral" /> },
+  submitted: { label: "Submitted (demo)", tone: "brand", icon: <Glyph tone="brand" /> },
+  accepted: { label: "Accepted (demo)", tone: "compliant", icon: <Glyph tone="compliant" /> },
+  rejected: { label: "Rejected", tone: "noncompliant", icon: <Glyph tone="noncompliant" /> },
 };
 
 export function DdsBadge({ status }: { status: DdsStatus | null | undefined }) {
   if (!status) return null;
   const m = DDS_META[status] ?? DDS_META.draft;
   return (
-    <Badge tone={m.tone} icon={m.icon}>
+    <Badge tone={m.tone}>
       {m.label}
     </Badge>
   );
@@ -177,35 +168,35 @@ export function DdsBadge({ status }: { status: DdsStatus | null | undefined }) {
 
 /* ── Campaigns ──────────────────────────────────────────────────────────── */
 export const STAGE_META: Record<CampaignStage, Meta & { step: number }> = {
-  requested: { label: "Requested", tone: "pending", icon: <Mail aria-hidden />, step: 0 },
-  reminded: { label: "Reminded", tone: "pending", icon: <BellRing aria-hidden />, step: 1 },
-  submitted: { label: "Submitted", tone: "brand", icon: <Upload aria-hidden />, step: 2 },
-  assessing: { label: "Checking plots", tone: "brand", icon: <LoaderCircle aria-hidden />, step: 3 },
-  awaiting_review: { label: "Awaiting review", tone: "review", icon: <Eye aria-hidden />, step: 4 },
-  changes_requested: { label: "Changes requested", tone: "review", icon: <MessageSquareExclamationPoint aria-hidden />, step: 5 },
-  approved: { label: "Approved", tone: "compliant", icon: <CircleCheck aria-hidden />, step: 5 },
-  overdue: { label: "Overdue", tone: "noncompliant", icon: <ClockExclamationPoint aria-hidden />, step: 1 },
+  requested: { label: "Requested", tone: "pending", icon: <Glyph tone="pending" />, step: 0 },
+  reminded: { label: "Reminded", tone: "pending", icon: <Glyph tone="pending" />, step: 1 },
+  submitted: { label: "Submitted", tone: "brand", icon: <Glyph tone="brand" />, step: 2 },
+  assessing: { label: "Checking plots", tone: "brand", icon: <Glyph tone="brand" />, step: 3 },
+  awaiting_review: { label: "Awaiting review", tone: "review", icon: <Glyph tone="review" />, step: 4 },
+  changes_requested: { label: "Changes requested", tone: "review", icon: <Glyph tone="review" />, step: 5 },
+  approved: { label: "Approved", tone: "compliant", icon: <Glyph tone="compliant" />, step: 5 },
+  overdue: { label: "Overdue", tone: "noncompliant", icon: <Glyph tone="noncompliant" />, step: 1 },
 };
 
 export function StageBadge({ stage }: { stage: CampaignStage }) {
   const m = STAGE_META[stage] ?? STAGE_META.requested;
   return (
-    <Badge tone={m.tone} icon={m.icon}>
+    <Badge tone={m.tone}>
       {m.label}
     </Badge>
   );
 }
 
 export const CAMPAIGN_STATUS_META: Record<CampaignStatus, Meta> = {
-  running: { label: "In progress", tone: "brand", icon: <LoaderCircle aria-hidden /> },
-  completed: { label: "Completed", tone: "compliant", icon: <CircleCheck aria-hidden /> },
-  cancelled: { label: "Stopped", tone: "neutral", icon: <Ban aria-hidden /> },
+  running: { label: "In progress", tone: "brand", icon: <Glyph tone="brand" /> },
+  completed: { label: "Completed", tone: "compliant", icon: <Glyph tone="compliant" /> },
+  cancelled: { label: "Stopped", tone: "neutral", icon: <Glyph tone="neutral" /> },
 };
 
 export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
   const m = CAMPAIGN_STATUS_META[status] ?? CAMPAIGN_STATUS_META.running;
   return (
-    <Badge tone={m.tone} icon={m.icon}>
+    <Badge tone={m.tone}>
       {m.label}
     </Badge>
   );
@@ -213,14 +204,17 @@ export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
 
 /* ── Shipment checks ────────────────────────────────────────────────────── */
 export const CHECK_META: Record<Check["status"], Meta> = {
-  pass: { label: "Passed", tone: "compliant", icon: <CircleCheck aria-hidden /> },
-  warn: { label: "Warning", tone: "review", icon: <TriangleExclamationPoint aria-hidden /> },
-  fail: { label: "Failed", tone: "noncompliant", icon: <CircleX aria-hidden /> },
+  pass: { label: "Passed", tone: "compliant", icon: <Glyph tone="compliant" /> },
+  warn: { label: "Warning", tone: "review", icon: <Glyph tone="review" /> },
+  fail: { label: "Failed", tone: "noncompliant", icon: <Glyph tone="noncompliant" /> },
 };
 
 export function CheckIcon({ status, className }: { status: Check["status"]; className?: string }) {
-  const color = { pass: "text-compliant", warn: "text-review", fail: "text-noncompliant" }[status];
-  return <span className={cn("inline-flex shrink-0 [&_svg]:size-[18px]", color, className)}>{CHECK_META[status].icon}</span>;
+  return (
+    <span className={cn("inline-flex shrink-0 items-center", className)}>
+      <Glyph tone={CHECK_META[status].tone} size={12} />
+    </span>
+  );
 }
 
 /* ── Country label ──────────────────────────────────────────────────────── */

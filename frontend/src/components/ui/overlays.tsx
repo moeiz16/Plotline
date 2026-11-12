@@ -4,8 +4,9 @@ import { X } from "lucide-react";
 import { Dialog as D, DropdownMenu as DM, Popover as P, Tooltip as T } from "radix-ui";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "./button";
 
-const panel = "z-50 rounded-lg border border-border bg-surface text-fg shadow-pop outline-none";
+const panel = "z-50 rounded-sm border border-rule-strong bg-sheet text-ink shadow-pop outline-none";
 const anim =
   "origin-[var(--radix-popper-transform-origin)] data-[state=open]:animate-[pop-in_160ms_var(--ease-out)] data-[state=closed]:animate-[pop-out_120ms_var(--ease-out)]";
 
@@ -28,12 +29,12 @@ export function DialogContent({
 }) {
   return (
     <D.Portal>
-      <D.Overlay className="fixed inset-0 z-50 bg-[rgb(20_19_17/0.42)] data-[state=open]:animate-[fade-in_150ms] data-[state=closed]:animate-[fade-out_140ms]" />
+      <D.Overlay className="fixed inset-0 z-50 bg-[var(--scrim)] data-[state=open]:animate-[fade-in_180ms] data-[state=closed]:animate-[fade-out_140ms]" />
       <D.Content
         className={cn(
           panel,
           "fixed left-1/2 top-[6vh] z-50 flex max-h-[88vh] w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col sm:top-[10vh] sm:max-h-[80vh]",
-          "data-[state=open]:animate-[pop-in_200ms_var(--ease-out)] data-[state=closed]:animate-[pop-out_140ms_var(--ease-out)]",
+          "data-[state=open]:animate-[pop-in_240ms_var(--ease-out)] data-[state=closed]:animate-[pop-out_140ms_var(--ease-out)]",
           size === "sm" && "max-w-sm",
           size === "md" && "max-w-lg",
           size === "lg" && "max-w-2xl",
@@ -42,14 +43,15 @@ export function DialogContent({
         )}
         {...props}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div aria-hidden className="h-1 w-full bg-marker" />
+        <div className="flex items-start justify-between gap-4 border-b-[3px] border-double border-ink/50 px-5 py-4">
           <div className="grid min-w-0 gap-1">
-            <D.Title className="text-base font-semibold">{title}</D.Title>
-            <D.Description className={cn("text-[13px] text-muted", !description && "sr-only")}>
+            <D.Title className="text-[21px] font-medium leading-tight tracking-[-0.01em]">{title}</D.Title>
+            <D.Description className={cn("text-[14.5px] italic text-ink-muted", !description && "sr-only")}>
               {description ?? (typeof title === "string" ? title : "Dialog")}
             </D.Description>
           </div>
-          <D.Close className="-mr-1 rounded-sm p-1 text-subtle outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-ring" aria-label="Close">
+          <D.Close className="-mr-1 rounded-sm p-1 text-ink-subtle outline-none hover:bg-sheet-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-ring" aria-label="Close">
             <X className="size-4" />
           </D.Close>
         </div>
@@ -63,7 +65,7 @@ export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLD
   return (
     <div
       className={cn(
-        "-mx-5 -mb-4 mt-5 flex flex-col-reverse gap-2 border-t border-border bg-surface-2/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-end",
+        "-mx-5 -mb-4 mt-5 flex flex-col-reverse gap-2 border-t border-rule bg-sheet-2/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-end",
         className,
       )}
       {...props}
@@ -71,9 +73,10 @@ export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLD
   );
 }
 
-/* ── Sheet (side drawer) ────────────────────────────────────────────────── */
+/* ── Sheet (side drawer / bottom sheet) ─────────────────────────────────── */
 export const Sheet = D.Root;
 export const SheetTrigger = D.Trigger;
+export const SheetClose = D.Close;
 export function SheetContent({
   className,
   children,
@@ -81,26 +84,28 @@ export function SheetContent({
   description,
   side = "right",
   ...props
-}: Omit<React.ComponentProps<typeof D.Content>, "title"> & { title: React.ReactNode; description?: React.ReactNode; side?: "right" | "left" }) {
+}: Omit<React.ComponentProps<typeof D.Content>, "title"> & { title: React.ReactNode; description?: React.ReactNode; side?: "right" | "left" | "bottom" }) {
   return (
     <D.Portal>
-      <D.Overlay className="fixed inset-0 z-50 bg-[rgb(20_19_17/0.36)] data-[state=open]:animate-[fade-in_150ms] data-[state=closed]:animate-[fade-out_160ms]" />
+      <D.Overlay className="fixed inset-0 z-50 bg-[var(--scrim)] data-[state=open]:animate-[fade-in_180ms] data-[state=closed]:animate-[fade-out_160ms]" />
       <D.Content
         className={cn(
-          "fixed inset-y-0 z-50 flex w-[86vw] max-w-sm flex-col border-border bg-surface outline-none",
-          side === "right"
-            ? "right-0 border-l data-[state=open]:animate-[sheet-in-right_200ms_var(--ease-out)]"
-            : "left-0 border-r data-[state=open]:animate-[sheet-in-left_200ms_var(--ease-out)]",
+          "fixed z-50 flex flex-col border-rule-strong bg-sheet text-ink outline-none",
+          side === "right" && "inset-y-0 right-0 w-[88vw] max-w-md border-l data-[state=open]:animate-[sheet-in-right_320ms_var(--ease-out)]",
+          side === "left" && "inset-y-0 left-0 w-[86vw] max-w-sm border-r data-[state=open]:animate-[sheet-in-left_320ms_var(--ease-out)]",
+          side === "bottom" &&
+            "inset-x-0 bottom-0 max-h-[82dvh] border-t pb-[env(safe-area-inset-bottom)] data-[state=open]:animate-[sheet-in-bottom_320ms_var(--ease-out)]",
           className,
         )}
         {...props}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
+        {side === "bottom" ? <div aria-hidden className="mx-auto mt-2 h-1 w-10 bg-rule-strong" /> : null}
+        <div className="flex items-start justify-between gap-4 border-b border-rule px-4 py-3">
           <div className="grid gap-0.5">
-            <D.Title className="text-[15px] font-semibold">{title}</D.Title>
-            <D.Description className={cn("text-[13px] text-muted", !description && "sr-only")}>{description ?? "Panel"}</D.Description>
+            <D.Title className="text-[18px] font-medium">{title}</D.Title>
+            <D.Description className={cn("text-[14px] italic text-ink-muted", !description && "sr-only")}>{description ?? "Panel"}</D.Description>
           </div>
-          <D.Close className="rounded-sm p-1 text-subtle hover:bg-surface-2 hover:text-fg" aria-label="Close">
+          <D.Close className="rounded-sm p-1 text-ink-subtle hover:bg-sheet-2 hover:text-ink" aria-label="Close">
             <X className="size-4" />
           </D.Close>
         </div>
@@ -139,7 +144,7 @@ export function Tooltip({ content, children, side = "top" }: { content: React.Re
           side={side}
           sideOffset={6}
           collisionPadding={8}
-          className="z-[60] max-w-xs rounded-md bg-fg px-2 py-1 text-xs font-medium leading-snug text-bg data-[state=delayed-open]:animate-[fade-in_120ms]"
+          className="z-[60] max-w-xs rounded-xs bg-ink px-2 py-1 font-mono text-[11px] leading-snug tracking-[0.01em] text-paper data-[state=delayed-open]:animate-[fade-in_120ms]"
         >
           {content}
         </T.Content>
@@ -164,7 +169,7 @@ export function DropdownItem({ className, ...props }: React.ComponentProps<typeo
   return (
     <DM.Item
       className={cn(
-        "flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-fg outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-surface-2 data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:text-subtle",
+        "flex cursor-pointer select-none items-center gap-2 rounded-xs px-2 py-1.5 text-[15px] text-ink outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-sheet-2 data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:text-ink-subtle",
         className,
       )}
       {...props}
@@ -173,11 +178,11 @@ export function DropdownItem({ className, ...props }: React.ComponentProps<typeo
 }
 
 export function DropdownLabel({ className, ...props }: React.ComponentProps<typeof DM.Label>) {
-  return <DM.Label className={cn("px-2 py-1.5 text-xs text-muted", className)} {...props} />;
+  return <DM.Label className={cn("label-caps px-2 pb-1 pt-2 text-ink-subtle", className)} {...props} />;
 }
 
 export function DropdownSeparator({ className, ...props }: React.ComponentProps<typeof DM.Separator>) {
-  return <DM.Separator className={cn("-mx-1 my-1 h-px bg-border", className)} {...props} />;
+  return <DM.Separator className={cn("-mx-1 my-1 h-px bg-rule", className)} {...props} />;
 }
 
 /* ── Confirm dialog ─────────────────────────────────────────────────────── */
@@ -208,15 +213,12 @@ export function ConfirmDialog({
         {children}
         <DialogFooter>
           <DialogClose asChild>
-            <button className="h-9 rounded-md border border-border-strong bg-surface px-3.5 text-sm font-medium hover:bg-surface-2">Cancel</button>
+            <button className={buttonVariants({ variant: "secondary" })}>Cancel</button>
           </DialogClose>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={cn(
-              "h-9 rounded-md px-3.5 text-sm font-medium disabled:opacity-50",
-              tone === "danger" ? "bg-noncompliant text-white dark:text-[#1b1a17]" : "bg-brand text-brand-contrast hover:bg-brand-hover",
-            )}
+            className={buttonVariants({ variant: tone === "danger" ? "danger" : "primary" })}
           >
             {loading ? "Working…" : confirmLabel}
           </button>

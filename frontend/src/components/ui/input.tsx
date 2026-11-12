@@ -5,18 +5,19 @@ import { Label as LabelPrimitive } from "radix-ui";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/** A field-book entry line: sheet ground, ruled border, ink focus with a marker ring. */
 export const fieldClass =
-  "w-full min-w-0 rounded-md border border-border-strong bg-surface px-3 text-sm text-fg outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-subtle hover:border-subtle/60 focus-visible:border-brand focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-noncompliant aria-[invalid=true]:ring-noncompliant/15";
+  "w-full min-w-0 rounded-sm border border-rule-strong bg-sheet px-3 text-[15px] text-ink outline-none transition-[border-color,box-shadow] duration-[var(--dur-fast)] placeholder:italic placeholder:text-ink-subtle hover:border-ink/50 focus-visible:border-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-marker/25 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-noncompliant aria-[invalid=true]:ring-noncompliant/15"
 
 export const Input = React.forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement> & { leading?: React.ReactNode; trailing?: React.ReactNode }
 >(({ className, leading, trailing, ...props }, ref) => {
-  if (!leading && !trailing) return <input ref={ref} className={cn(fieldClass, "h-9", className)} {...props} />;
+  if (!leading && !trailing) return <input ref={ref} className={cn(fieldClass, "h-10", className)} {...props} />;
   return (
     <div className="relative flex items-center">
       {leading ? <span className="pointer-events-none absolute left-2.5 flex text-subtle [&_svg]:size-4">{leading}</span> : null}
-      <input ref={ref} className={cn(fieldClass, "h-9", leading && "pl-8", trailing && "pr-9", className)} {...props} />
+      <input ref={ref} className={cn(fieldClass, "h-10", leading && "pl-8", trailing && "pr-9", className)} {...props} />
       {trailing ? <span className="absolute right-2 flex items-center text-subtle">{trailing}</span> : null}
     </div>
   );
@@ -34,7 +35,7 @@ Textarea.displayName = "Textarea";
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement> & { wrapperClassName?: string }>(
   ({ className, wrapperClassName, children, ...props }, ref) => (
     <div className={cn("relative", wrapperClassName)}>
-      <select ref={ref} className={cn(fieldClass, "h-9 appearance-none pr-8", className)} {...props}>
+      <select ref={ref} className={cn(fieldClass, "h-10 appearance-none pr-8", className)} {...props}>
         {children}
       </select>
       <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle" aria-hidden />
@@ -44,7 +45,7 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
 Select.displayName = "Select";
 
 export function Label({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
-  return <LabelPrimitive.Root className={cn("text-[13px] font-medium text-fg", className)} {...props} />;
+  return <LabelPrimitive.Root className={cn("label-caps text-ink-muted", className)} {...props} />;
 }
 
 export function Field({
@@ -71,16 +72,17 @@ export function Field({
       {label ? (
         <div className="flex items-baseline justify-between gap-3">
           <Label htmlFor={htmlFor}>{label}</Label>
-          {action ?? (optional ? <span className="text-xs text-subtle">Optional</span> : null)}
+          {action ?? (optional ? <span className="font-serif text-xs italic text-ink-subtle">optional</span> : null)}
         </div>
       ) : null}
       {children}
       {error ? (
-        <p role="alert" className="text-xs text-noncompliant-fg">
+        <p role="alert" className="flex items-center gap-1.5 text-[13px] text-noncompliant-fg">
+          <span aria-hidden className="inline-block size-2 shrink-0 hatch-noncompliant" />
           {error}
         </p>
       ) : hint ? (
-        <p className="text-xs text-muted">{hint}</p>
+        <p className="text-[13px] italic text-ink-muted">{hint}</p>
       ) : null}
     </div>
   );
@@ -91,11 +93,11 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Omit<React.Input
     const [show, setShow] = React.useState(false);
     return (
       <div className="relative flex items-center">
-        <input ref={ref} type={show ? "text" : "password"} className={cn(fieldClass, "h-9 pr-10", className)} {...props} />
+        <input ref={ref} type={show ? "text" : "password"} className={cn(fieldClass, "h-10 pr-10", className)} {...props} />
         <button
           type="button"
           onClick={() => setShow((v) => !v)}
-          className="absolute right-1 flex size-7 items-center justify-center rounded-sm text-subtle outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-1.5 flex size-7 items-center justify-center rounded-sm text-ink-subtle outline-none hover:bg-sheet-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={show ? "Hide password" : "Show password"}
           aria-pressed={show}
         >
@@ -132,11 +134,11 @@ export function Checkbox({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 cursor-pointer rounded-sm border-border-strong accent-[var(--brand)]"
+        className="mt-1 size-4 shrink-0 cursor-pointer rounded-none border-rule-strong accent-[var(--marker-fill)]"
       />
       <span className="grid gap-0.5">
-        <span className="text-sm text-fg">{label}</span>
-        {description ? <span className="text-xs text-muted">{description}</span> : null}
+        <span className="text-[15px] text-ink">{label}</span>
+        {description ? <span className="text-[13px] text-ink-muted">{description}</span> : null}
       </span>
     </label>
   );

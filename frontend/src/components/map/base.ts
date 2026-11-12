@@ -42,7 +42,7 @@ export function fetchVectorStyle(): Promise<StyleSpecification | null> {
 }
 
 export function backgroundColor(dark: boolean) {
-  return dark ? "#1f1e1a" : "#ece8df";
+  return dark ? "#0b1014" : "#e6e0d2";
 }
 
 export function baseStyle(kind: Basemap, dark: boolean, vector: StyleSpecification | null): StyleSpecification {
@@ -60,37 +60,37 @@ export function baseStyle(kind: Basemap, dark: boolean, vector: StyleSpecificati
   return { version: 8, sources: {}, layers: [bg] };
 }
 
-/** Plotline's quiet, earthy palette for the street basemap, one set per theme. */
+/** Field Atlas basemap tints: "map paper" (light) and "night satellite" (dark). */
 const EARTH = {
   light: {
-    bg: "#ece8df",
-    land: "#e6e1d5",
-    green: "#dde2cf",
-    water: "#c9d6d2",
-    waterLine: "#b7c8c3",
-    building: "#e0dacd",
-    road: "#f7f4ee",
-    roadCasing: "#d8d1c3",
-    rail: "#cfc8ba",
-    boundary: "#a89e8c",
-    text: "#5f5a52",
-    waterText: "#5d7671",
-    halo: "#f4f1ea",
+    bg: "#e6e0d2",
+    land: "#e9e3d6",
+    green: "#dde1cc",
+    water: "#c3cfcd",
+    waterLine: "#adbdbb",
+    building: "#ddd6c6",
+    road: "#f4efe4",
+    roadCasing: "#d2c9b6",
+    rail: "#c9c0ad",
+    boundary: "#8f8673",
+    text: "#4a5560",
+    waterText: "#4f6a70",
+    halo: "#efe9dd",
   },
   dark: {
-    bg: "#1f1e1a",
-    land: "#23221e",
-    green: "#232820",
-    water: "#18211f",
-    waterLine: "#1d2a27",
-    building: "#2a2823",
-    road: "#302e28",
-    roadCasing: "#2a2823",
-    rail: "#35322b",
-    boundary: "#5c574c",
-    text: "#a39c8e",
-    waterText: "#6f8c85",
-    halo: "#1a1916",
+    bg: "#0b1014",
+    land: "#0e1419",
+    green: "#101a16",
+    water: "#07141c",
+    waterLine: "#10222c",
+    building: "#151d24",
+    road: "#1a242d",
+    roadCasing: "#141c23",
+    rail: "#202b35",
+    boundary: "#3d4b58",
+    text: "#8e979d",
+    waterText: "#4f7280",
+    halo: "#0b1014",
   },
 };
 
