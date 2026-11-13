@@ -1,11 +1,11 @@
 "use client";
 
-import { CircleCheck, LoaderCircle, MapPin, Pentagon, Undo2, X } from "lucide-react";
+import { MapPin, Pentagon, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { IssueList } from "@/components/domain/import-result";
 import { DrawMap, type DrawMode } from "@/components/map/draw-map";
 import { Button } from "@/components/ui/button";
-import { Callout, Segmented } from "@/components/ui/display";
+import { Callout, Glyph, Segmented } from "@/components/ui/display";
 import { Field, Input, Select } from "@/components/ui/input";
 import { ApiError, errorMessage } from "@/lib/api/client";
 import type { Commodity, Geometry, PlotListItem, Position, ValidationResult } from "@/lib/api/types";
@@ -32,8 +32,9 @@ export function ValidationPanel({ state, result, error }: { state: CheckState; r
   if (state === "idle") return null;
   if (state === "checking")
     return (
-      <div className="flex items-center gap-2 rounded-md border border-border bg-surface-2/60 px-3 py-2.5 text-sm text-muted" aria-live="polite">
-        <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> Checking the plot against EUDR location rules…
+      <div className="flex items-center gap-2.5 border border-dashed border-rule-strong bg-sheet-2/50 px-3 py-2.5 text-[14.5px] italic text-ink-muted" aria-live="polite">
+        <span aria-hidden className="skeleton h-2 w-10" />
+        Reading the plot against EUDR location rules…
       </div>
     );
   if (state === "error")
@@ -44,14 +45,11 @@ export function ValidationPanel({ state, result, error }: { state: CheckState; r
     );
   if (!result) return null;
   return (
-    <div
-      className={cn("rounded-md border p-3", result.valid ? "border-compliant/25 bg-compliant-soft" : "border-noncompliant/25 bg-noncompliant-soft")}
-      aria-live="polite"
-    >
-      <p className={cn("flex items-center gap-2 text-sm font-medium", result.valid ? "text-compliant-fg" : "text-noncompliant-fg")}>
-        {result.valid ? <CircleCheck className="size-4" aria-hidden /> : <X className="size-4" aria-hidden />}
+    <div className={cn("border border-l-[3px] border-rule bg-sheet p-3", result.valid ? "border-l-compliant" : "border-l-noncompliant")} aria-live="polite">
+      <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
+        <Glyph tone={result.valid ? "compliant" : "noncompliant"} />
         {result.valid
-          ? `Looks good: ${result.kind === "point" ? "a point" : "a boundary"} of ${ha(result.areaHa, 2)}`
+          ? `Location is precise enough: ${result.kind === "point" ? "a point" : "a boundary"} of ${ha(result.areaHa, 2)}`
           : "This plot needs a correction before it can be saved"}
       </p>
       <IssueList issues={result.issues} className="mt-2" />
@@ -177,7 +175,7 @@ export function PlotDrawForm({
           { value: "point", label: (<><MapPin aria-hidden /> Single point</>) },
         ]}
       />
-      <p className="text-[13px] leading-relaxed text-muted">
+      <p className="text-[14.5px] italic leading-relaxed text-ink-muted">
         {mode === "polygon"
           ? "Tap each corner of the plot in order. Three or more corners make a shape. Required for plots larger than 4 hectares."
           : "Tap the centre of the plot, or use your location while standing in it. Points are allowed for plots of 4 hectares or less."}
@@ -190,12 +188,12 @@ export function PlotDrawForm({
         onVertices={setVertices}
         country={country}
         existing={existing ?? []}
-        className={cn("rounded-lg border border-border", mapClassName)}
+        className={cn("border border-ink/50", mapClassName)}
       />
       {mode === "polygon" ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-auto text-[13px] text-muted" aria-live="polite">
-            {vertices.length} {vertices.length === 1 ? "corner" : "corners"} placed
+          <span className="numerals mr-auto text-[12px] uppercase text-ink-muted" aria-live="polite">
+            {vertices.length} {vertices.length === 1 ? "corner" : "corners"} staked
           </span>
           <Button size="sm" onClick={() => setVertices((v) => v.slice(0, -1))} disabled={!vertices.length}>
             <Undo2 /> Undo
@@ -205,8 +203,8 @@ export function PlotDrawForm({
           </Button>
         </div>
       ) : point ? (
-        <div className="flex items-center justify-between gap-2 text-[13px] text-muted">
-          <span className="tabular">
+        <div className="flex items-center justify-between gap-2 text-ink-muted">
+          <span className="numerals text-[12px]">
             {point[1].toFixed(6)}, {point[0].toFixed(6)}
           </span>
           <Button size="sm" variant="ghost" onClick={clear}>
@@ -248,7 +246,8 @@ export function PlotDrawForm({
           ) : null}
         </div>
         {formError ? (
-          <p role="alert" className="text-sm text-noncompliant-fg">
+          <p role="alert" className="flex items-center gap-1.5 text-[14px] text-noncompliant-fg">
+            <Glyph tone="noncompliant" />
             {formError}
           </p>
         ) : null}
