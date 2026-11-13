@@ -1,0 +1,104 @@
+/*
+ * Landing-story motion that needs no JavaScript.
+ * - .rise: a word lifts out of its line on load (transform only).
+ * - .inkRow / .tickGrow / .stakeIn: CSS scroll-driven animations (animation-timeline: view()),
+ *   only where the browser supports them and the reader has not asked for reduced motion.
+ *   Everywhere else the content is simply visible.
+ */
+
+.line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ink {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes stake {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    display: inline-block;
+    animation: rise 900ms var(--ease-survey) both;
+  }
+  .fadeUp {
+    animation: fadeUp 700ms var(--ease-out) both;
+  }
+
+  @supports (animation-timeline: view()) {
+    .inkRow {
+      animation: ink linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 32%;
+    }
+    .tickGrow {
+      transform-origin: bottom;
+      animation: grow linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 40%;
+    }
+    .drawView {
+      stroke-dasharray: 1;
+      animation: draw linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 45%;
+    }
+    .stakeIn {
+      animation: stake linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 38%;
+    }
+  }
+}
