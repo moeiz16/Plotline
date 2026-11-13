@@ -3,357 +3,341 @@
 import { ArrowLeft, Download, ExternalLink, FileText, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { DdsBadge } from "@/components/domain/status";
-import { PlotMap } from "@/components/map/plot-map";
+import { useMemo, useState, type ReactNode } from "react";
+import { DdsBadge, RISK_META } from "@/components/domain/status";
+import { logTime, stampDate } from "@/components/ledger/format";
+import { FormBox, FormGrid, LandingStamp } from "@/components/ledger/paper";
+import { PlotSketch } from "@/components/ledger/sketch";
+import { Reveal } from "@/components/motion";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
-import { Callout, Card, CardBody, CardHeader, CopyField, ErrorState, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/display";
+import { CopyField, ErrorState, Glyph, Paper, Skeleton } from "@/components/ui/display";
 import { ConfirmDialog } from "@/components/ui/overlays";
 import { fileUrl } from "@/lib/api/client";
-import { useDds, useSubmitDds } from "@/lib/api/hooks";
+import { useCountries, useDds, useSubmitDds } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
-import type { Geometry, PlotFeatureCollection } from "@/lib/api/types";
-import { dateTime } from "@/lib/format";
+import type { Geometry } from "@/lib/api/types";
+import { countryName, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const ACRONYMS = new Set(["hs", "eori", "id", "eu", "dds", "ha", "kg", "iso", "url", "vat"]);
-
-/** Plain names for the EU information system's field names. */
-const LABELS: Record<string, string> = {
-  geometryGeojson: "Plot locations",
-  geoLocationConfidential: "Locations kept confidential",
-  borderCrossCountry: "Border crossing country",
-  internalReferenceNumber: "Internal reference",
-  netWeight: "Net weight (kg)",
-  hsHeading: "HS heading",
-  speciesInfo: "Species",
-  referenceNumber: "Operator identifiers",
-  descriptors: "Goods",
-  goodsMeasure: "Quantity",
-};
-
-const VALUE_LABELS: Record<string, string> = { eori: "EORI", OPERATOR: "Operator", IMPORT: "Import", EXPORT: "Export", DOMESTIC: "Domestic" };
+/* ── Reading the EU submission data ─────────────────────────────────────────── */
+type Rec = Record<string, unknown>;
+const rec = (v: unknown): Rec => (v && typeof v === "object" && !Array.isArray(v) ? (v as Rec) : {});
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+const str = (v: unknown) => (typeof v === "string" || typeof v === "number" ? String(v) : "");
 
 /** The EU format carries each producer's plots as a base64-encoded GeoJSON FeatureCollection. */
-function decodeGeojson(v: unknown): { type: string; features?: unknown[] } | null {
+function decodeGeojson(v: unknown): { features?: { geometry?: Geometry; properties?: Rec }[] } | null {
   if (typeof v !== "string" || v.length < 16) return null;
   try {
-    const bin = atob(v);
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    const obj = JSON.parse(new TextDecoder().decode(bytes)) as { type?: string; features?: unknown[] };
-    return obj && typeof obj.type === "string" ? (obj as { type: string; features?: unknown[] }) : null;
+    const bytes = Uint8Array.from(atob(v), (c) => c.charCodeAt(0));
+    const obj = JSON.parse(new TextDecoder().decode(bytes));
+    return obj && typeof obj === "object" ? obj : null;
   } catch {
     return null;
   }
 }
 
-function PlotLocations({ fc }: { fc: { type: string; features?: unknown[] } }) {
-  const feats = (fc.features ?? []) as { geometry?: { type?: string }; properties?: Record<string, unknown> }[];
-  const points = feats.filter((f) => f.geometry?.type === "Point").length;
-  const refs = feats.map((f) => f.properties?.ProductionPlace).filter((r): r is string => typeof r === "string");
-  return (
-    <span className="grid justify-items-end gap-0.5">
-      <span>
-        {feats.length} {feats.length === 1 ? "plot" : "plots"}
-        {points ? ` (${points} as ${points === 1 ? "a point" : "points"})` : ""}
-      </span>
-      {refs.length ? <span className="font-mono text-xs font-normal text-muted [overflow-wrap:anywhere]">{refs.join(", ")}</span> : null}
-    </span>
-  );
+interface Producer {
+  name: string;
+  country: string;
+  plots: { ref: string; geometry: Geometry | undefined; area: number | null }[];
 }
 
-function humanize(key: string) {
-  if (LABELS[key]) return LABELS[key];
-  const words = key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .split(/\s+/)
-    .map((w) => (ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.toLowerCase()));
-  if (!words.length) return key;
-  const last = words[words.length - 1];
-  if (words.length > 1 && (last === "KG" || last === "HA")) words.splice(-1, 1, `(${last.toLowerCase()})`);
-  const first = words[0];
-  words[0] = first === first.toUpperCase() ? first : first[0].toUpperCase() + first.slice(1);
-  return words.join(" ");
-}
-
-function isGeometry(v: unknown): v is { type: string; coordinates: unknown } {
-  return !!v && typeof v === "object" && "type" in v && "coordinates" in v;
-}
-
-function countPositions(c: unknown): number {
-  if (!Array.isArray(c)) return 0;
-  if (typeof c[0] === "number") return 1;
-  return c.reduce((s: number, x) => s + countPositions(x), 0);
-}
-
-function Scalar({ v }: { v: unknown }) {
-  if (v === null || v === undefined || v === "") return <span className="text-subtle">–</span>;
-  if (typeof v === "boolean") return <span>{v ? "Yes" : "No"}</span>;
-  const text = String(v);
-  return <span className="[overflow-wrap:anywhere]">{VALUE_LABELS[text] ?? text}</span>;
-}
-
-/** Renders the EU submission data as nested, readable sections instead of raw code. */
-function DataView({ value, depth = 0 }: { value: unknown; depth?: number }) {
-  if (isGeometry(value)) {
-    const n = countPositions(value.coordinates);
-    return (
-      <span>
-        {value.type === "Point" ? "Point location" : `${value.type} boundary`} · {n} {n === 1 ? "coordinate" : "coordinates"}
-      </span>
-    );
-  }
-  if (Array.isArray(value)) {
-    if (!value.length) return <span className="text-subtle">None</span>;
-    if (value.every((x) => typeof x !== "object" || x === null)) return <span className="break-words">{value.map(String).join(", ")}</span>;
-    return (
-      <ol className="grid gap-2">
-        {value.map((item, i) => (
-          <li key={i} className="rounded-md border border-border bg-surface p-2.5">
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.05em] text-subtle">Item {i + 1}</p>
-            <DataView value={item} depth={depth + 1} />
-          </li>
-        ))}
-      </ol>
-    );
-  }
-  if (value && typeof value === "object") {
-    return (
-      <dl className={cn("grid gap-0", depth > 0 && "text-[13px]")}>
-        {Object.entries(value as Record<string, unknown>).map(([k, v]) => {
-          const nested = v !== null && typeof v === "object" && !isGeometry(v) && !(Array.isArray(v) && v.every((x) => typeof x !== "object"));
-          return nested ? (
-            <div key={k} className="border-t border-border py-2.5 first:border-t-0">
-              <dt className="mb-2 text-[13px] font-semibold">{humanize(k)}</dt>
-              <dd className={cn(depth < 2 && "border-l-2 border-border pl-3")}>
-                <DataView value={v} depth={depth + 1} />
-              </dd>
-            </div>
-          ) : (
-            <div key={k} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-border py-2 first:border-t-0">
-              <dt className="text-muted">{humanize(k)}</dt>
-              <dd className="min-w-0 text-right font-medium">
-                {isGeometry(v) ? (
-                  <DataView value={v} />
-                ) : /geojson/i.test(k) && decodeGeojson(v) ? (
-                  <PlotLocations fc={decodeGeojson(v)!} />
-                ) : (
-                  <Scalar v={Array.isArray(v) ? v.join(", ") : v} />
-                )}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    );
-  }
-  return <Scalar v={value} />;
-}
-
-/** Every plot location declared in the statement, found anywhere in the submission data. */
-function declaredPlots(payload: unknown): PlotFeatureCollection {
-  const features: PlotFeatureCollection["features"] = [];
-  const walk = (v: unknown, label: string | null) => {
-    if (typeof v === "string") {
-      const fc = decodeGeojson(v);
-      if (fc) walk(fc, label);
-      return;
-    }
-    if (!v || typeof v !== "object") return;
-    if (isGeometry(v) && ["Point", "Polygon", "MultiPolygon"].includes(v.type)) {
-      const n = features.length + 1;
-      features.push({
-        type: "Feature",
-        geometry: v as Geometry,
-        properties: { id: `declared-${n}`, reference: label ?? `Plot ${n}`, verdict: "compliant", commodity: "cocoa", supplierName: "", areaHa: 0, kind: v.type === "Point" ? "point" : "polygon" },
-      });
-      return;
-    }
-    const rec = v as Record<string, unknown>;
-    const props = (rec.properties ?? {}) as Record<string, unknown>;
-    const pick = [rec.reference, rec.plotReference, rec.productionPlace, props.ProductionPlace, props.reference].find((x) => typeof x === "string");
-    const ref = typeof pick === "string" ? pick : label;
-    for (const x of Array.isArray(v) ? v : Object.values(rec)) walk(x, ref);
+function readStatement(payload: unknown) {
+  const st = rec(rec(payload).statement);
+  const op = rec(st.operator);
+  const na = rec(op.nameAndAddress);
+  const ids = arr(op.referenceNumber).map(rec);
+  const eori = ids.find((x) => str(x.identifierType).toLowerCase() === "eori");
+  const commodities = arr(st.commodities).map((c) => {
+    const r = rec(c);
+    const desc = rec(r.descriptors);
+    const species = rec(r.speciesInfo);
+    const producers: Producer[] = arr(r.producers).map((p) => {
+      const pr = rec(p);
+      const fc = decodeGeojson(pr.geometryGeojson);
+      return {
+        name: str(pr.name),
+        country: str(pr.country),
+        plots: (fc?.features ?? []).map((f, i) => {
+          const props = rec(f.properties);
+          const area = Number(props.Area ?? props.area ?? NaN);
+          return { ref: str(props.ProductionPlace) || `Plot ${i + 1}`, geometry: f.geometry, area: Number.isFinite(area) ? area : null };
+        }),
+      };
+    });
+    return {
+      hs: str(r.hsHeading),
+      description: str(desc.descriptionOfGoods),
+      netWeight: Number(rec(desc.goodsMeasure).netWeight ?? 0),
+      scientific: str(species.scientificName),
+      common: str(species.commonName),
+      producers,
+    };
+  });
+  return {
+    activity: str(st.activityType),
+    operatorName: str(na.name),
+    operatorAddress: str(na.address),
+    operatorCountry: str(na.country),
+    eori: eori ? str(eori.identifierValue) : "",
+    countryOfActivity: str(st.countryOfActivity),
+    associated: arr(st.associatedStatements),
+    comment: str(st.comment),
+    commodities,
   };
-  walk(payload, null);
-  return { type: "FeatureCollection", features };
 }
 
-function EvidencePreview({ id }: { id: string }) {
-  const [loaded, setLoaded] = useState(false);
+const ACTIVITY: Record<string, string> = { IMPORT: "Import (placing on the EU market)", EXPORT: "Export", DOMESTIC: "Domestic production" };
+
+/* ── Document section ───────────────────────────────────────────────────────── */
+function Section({ n, title, children, className }: { n: number; title: string; children: ReactNode; className?: string }) {
   return (
-    <div className="relative">
-      {!loaded ? <Skeleton className="absolute inset-0 h-[640px]" /> : null}
-      <iframe
-        title="Evidence pack preview"
-        src={fileUrl(`/dds/${id}/evidence.html`)}
-        sandbox="allow-same-origin"
-        onLoad={() => setLoaded(true)}
-        className="h-[640px] w-full rounded-md border border-border bg-white"
-      />
-    </div>
+    <Reveal as="section" className={cn("grid gap-3 border-b border-rule py-6 sm:grid-cols-[3rem_minmax(0,1fr)]", className)}>
+      <span className="numerals text-[22px] leading-none text-ink-subtle">{n}</span>
+      <div className="min-w-0">
+        <h2 className="label-caps mb-3 text-ink">{title}</h2>
+        {children}
+      </div>
+    </Reveal>
   );
 }
+
+const FILED_TONE = { submitted: "brand", accepted: "compliant", rejected: "noncompliant", draft: "neutral" } as const;
 
 export default function StatementPage() {
   const { id } = useParams<{ id: string }>();
   const q = useDds(id);
   const submit = useSubmitDds(id);
+  const countries = useCountries();
   const { can } = useSession();
   const [confirm, setConfirm] = useState(false);
+  const [fresh, setFresh] = useState(false);
   const d = q.data;
-  const plots = useMemo(() => declaredPlots(d?.payload), [d?.payload]);
+  const doc = useMemo(() => readStatement(d?.payload), [d?.payload]);
+  const tier = useMemo(() => new Map((countries.data ?? []).map((c) => [c.code, c.riskTier])), [countries.data]);
 
   if (q.isPending)
     return (
-      <PageContainer wide>
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="mt-6 h-96" />
+      <PageContainer>
+        <Skeleton className="mx-auto h-[720px] max-w-[820px]" />
       </PageContainer>
     );
   if (q.isError || !d)
     return (
       <PageContainer>
-        <Card>
-          <ErrorState error={q.error} onRetry={() => q.refetch()} title="We couldn’t open this statement" />
-        </Card>
+        <ErrorState error={q.error} onRetry={() => q.refetch()} title="We couldn’t open this statement" />
       </PageContainer>
     );
 
+  const filed = d.status !== "draft";
+  const origins = [...new Set(doc.commodities.flatMap((c) => c.producers.map((p) => p.country)))].filter(Boolean);
+  const plotCount = doc.commodities.reduce((n, c) => n + c.producers.reduce((m, p) => m + p.plots.length, 0), 0);
+  let sketch = 0;
+
   return (
-    <PageContainer wide>
-      <Link href="/app/statements" className="inline-flex items-center gap-1 rounded-sm text-[13px] text-muted hover:text-fg">
-        <ArrowLeft className="size-3.5" aria-hidden /> Statements
-      </Link>
-      <div className="mb-6 mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
+    <PageContainer bleed className="graticule min-h-[calc(100dvh-var(--masthead-h)-var(--tabbar-h))] print:bg-none">
+      <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {/* Actions above the paper */}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
+          <Link href="/app/statements" className="label-caps inline-flex items-center gap-1.5 text-ink-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring">
+            <ArrowLeft className="size-3.5" aria-hidden /> Statement file
+          </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-mono text-xl font-semibold sm:text-2xl">{d.internalRef}</h1>
-            <DdsBadge status={d.status} />
-          </div>
-          <p className="mt-1.5 text-sm text-muted">
-            Due diligence statement for shipment{" "}
-            <Link href={`/app/shipments/${d.shipmentId}`} className="font-mono font-medium text-fg hover:underline">
-              {d.shipmentReference}
-            </Link>{" "}
-            · prepared {dateTime(d.createdAt)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild>
-            <a href={fileUrl(`/dds/${d.id}/payload.json`)} download>
-              <Download /> Download EU submission file
-            </a>
-          </Button>
-          {d.status === "draft" && can("dds:submit") ? (
-            <Button variant="primary" onClick={() => setConfirm(true)}>
-              <Send /> Submit
+            <Button asChild size="sm">
+              <a href={fileUrl(`/dds/${d.id}/payload.json`)} download>
+                <Download /> EU file · JSON
+              </a>
             </Button>
-          ) : null}
-        </div>
-      </div>
-
-      {d.status !== "draft" ? (
-        <Callout tone="brand" className="mb-4" icon={<Send />} title={d.status === "submitted" ? "Submitted (demo submission)" : d.status === "accepted" ? "Accepted (demo submission)" : "Rejected (demo submission)"}>
-          Submission to the EU information system (TRACES) is simulated in this workspace. The reference and verification numbers below are for
-          demonstration and were not issued by the EU.
-        </Callout>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="grid min-w-0 content-start gap-4 lg:col-span-2">
-          <Card>
-            <CardHeader title="Summary" />
-            <CardBody>
-              <p className="whitespace-pre-line text-sm leading-relaxed">{d.summary}</p>
-            </CardBody>
-          </Card>
-          {plots.features.length ? (
-            <Card className="overflow-hidden">
-              <CardHeader title="Declared plots" description={`${plots.features.length} ${plots.features.length === 1 ? "location" : "locations"} included in this statement.`} />
-              <PlotMap data={plots} compact hoverCard={false} maxFitZoom={15} className="h-64 sm:h-80" ariaLabel="Map of the plots declared in this statement" />
-            </Card>
-          ) : null}
-          <Card>
-            <Tabs defaultValue="data">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 border-b border-border px-2 sm:px-3">
-                <TabsList className="border-b-0">
-                  <TabsTrigger value="data">Statement contents</TabsTrigger>
-                  <TabsTrigger value="evidence">Evidence pack</TabsTrigger>
-                </TabsList>
-                <Button asChild size="sm" variant="ghost">
-                  <a href={fileUrl(`/dds/${d.id}/payload.json`)} download>
-                    <Download /> Download
-                  </a>
-                </Button>
-              </div>
-              <TabsContent value="data" className="outline-none">
-                <CardBody className="text-sm">
-                  <p className="mb-3 text-[13px] text-muted">What the statement contains, in the structure the EU information system expects.</p>
-                  {d.payload ? <DataView value={d.payload} /> : <p className="text-muted">Not available.</p>}
-                </CardBody>
-              </TabsContent>
-              <TabsContent value="evidence" className="outline-none">
-                <CardBody>
-                  <EvidencePreview id={d.id} />
-                </CardBody>
-              </TabsContent>
-            </Tabs>
-          </Card>
-        </div>
-        <div className="grid min-w-0 content-start gap-4">
-          <Card>
-            <CardHeader title="Reference numbers" />
-            <CardBody className="grid gap-4">
-              <div className="grid gap-1.5">
-                <p className="text-[13px] text-muted">Reference number</p>
-                {d.referenceNumber ? <CopyField value={d.referenceNumber} label="Copy reference number" /> : <p className="text-sm text-muted">Assigned when the statement is submitted.</p>}
-              </div>
-              <div className="grid gap-1.5">
-                <p className="text-[13px] text-muted">Verification number</p>
-                {d.verificationNumber ? <CopyField value={d.verificationNumber} label="Copy verification number" /> : <p className="text-sm text-muted">Assigned when the statement is submitted.</p>}
-              </div>
-              <p className="text-xs text-muted">Customs declarations quote these numbers when the goods are placed on the market.</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="Evidence pack" description="Everything behind this statement, for your records and for auditors." />
-            <CardBody className="grid gap-2">
-              <Button asChild className="justify-start">
-                <a href={fileUrl(`/dds/${d.id}/evidence.html`)} target="_blank" rel="noopener">
-                  <ExternalLink /> Open printable evidence pack
-                </a>
+            <Button asChild size="sm">
+              <a href={fileUrl(`/dds/${d.id}/evidence.html`)} target="_blank" rel="noopener">
+                <ExternalLink /> Evidence · HTML
+              </a>
+            </Button>
+            <Button asChild size="sm">
+              <a href={fileUrl(`/dds/${d.id}/evidence.pdf`)} target="_blank" rel="noopener">
+                <FileText /> Evidence · PDF
+              </a>
+            </Button>
+            {d.status === "draft" && can("dds:submit") ? (
+              <Button variant="primary" onClick={() => setConfirm(true)}>
+                <Send /> Submit to EU system (demo)
               </Button>
-              <Button asChild className="justify-start">
-                <a href={fileUrl(`/dds/${d.id}/evidence.pdf`)} target="_blank" rel="noopener">
-                  <FileText /> Download as PDF
-                </a>
-              </Button>
-              <p className="text-xs text-muted">Kept for five years, as the regulation requires.</p>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="Submission log" />
-            {d.submissions.length ? (
-              <ol className="divide-y divide-border">
-                {d.submissions.map((s) => (
-                  <li key={s.id} className="px-4 py-3 sm:px-5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium capitalize">{s.status.replace(/_/g, " ")}</span>
-                      <span className="text-xs text-muted">{dateTime(s.at)}</span>
-                    </div>
-                    <p className="mt-0.5 text-[13px] text-muted">{s.message}</p>
-                    {s.referenceNumber ? <p className="mt-0.5 font-mono text-xs text-muted">{s.referenceNumber}</p> : null}
-                  </li>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,820px)_minmax(0,1fr)]">
+          <Paper className="mx-auto w-full max-w-[820px] px-5 pb-8 pt-7 sm:px-10 sm:pt-10 print:shadow-none">
+            {/* Head */}
+            <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+              <div className="min-w-0">
+                <p className="label-caps text-ink">Due diligence statement</p>
+                <p className="mt-1 text-[14.5px] italic text-ink-muted">Regulation (EU) 2023/1115 · Article 4(2) · Annex II</p>
+              </div>
+              <div className="text-right">
+                <p className="label-caps text-ink-subtle">Ref.</p>
+                <p className="numerals text-[14px]">{d.internalRef}</p>
+              </div>
+            </header>
+            <div className="relative mt-6 flex min-h-[64px] flex-wrap items-end justify-between gap-4">
+              <h1 className="text-[28px] font-medium leading-[1.1] tracking-[-0.015em] sm:text-[34px]">
+                {doc.commodities[0]?.description || "Relevant products"}
+                <span className="block text-[17px] font-normal italic text-ink-muted">shipment {d.shipmentReference}</span>
+              </h1>
+              {filed ? (
+                <LandingStamp tone={FILED_TONE[d.status]} angle={-8} land={fresh} size="lg" className="sm:mr-4">
+                  {d.status === "rejected" ? "Rejected" : "Submitted (demo)"} · {stampDate(d.submittedAt)}
+                </LandingStamp>
+              ) : (
+                <span className="border-2 border-dashed border-rule-strong px-3 py-1.5 font-mono text-[12px] uppercase tracking-[0.14em] text-ink-subtle">Draft · not submitted</span>
+              )}
+            </div>
+            <div className="mt-6 h-[3px] border-y border-ink/70" aria-hidden />
+
+            <Section n={1} title="Operator">
+              <FormGrid className="grid-cols-1 sm:grid-cols-2">
+                <FormBox label="Name" className="sm:col-span-2">
+                  {doc.operatorName || "–"}
+                </FormBox>
+                <FormBox label="Address" className="sm:col-span-2">
+                  {doc.operatorAddress || "–"}
+                  {doc.operatorCountry ? `, ${countryName(doc.operatorCountry)}` : ""}
+                </FormBox>
+                <FormBox label="EORI number" mono>
+                  {doc.eori || "–"}
+                </FormBox>
+                <FormBox label="Activity">{ACTIVITY[doc.activity] ?? (doc.activity || "–")}</FormBox>
+              </FormGrid>
+            </Section>
+
+            <Section n={2} title="Relevant products">
+              {doc.commodities.map((c, i) => (
+                <FormGrid key={i} className="grid-cols-2 sm:grid-cols-4">
+                  <FormBox label="HS heading" mono>
+                    {c.hs || "–"}
+                  </FormBox>
+                  <FormBox label="Net weight" mono>
+                    {num(c.netWeight)} KG
+                  </FormBox>
+                  <FormBox label="Description" className="col-span-2">
+                    {c.description || "–"}
+                  </FormBox>
+                  <FormBox label="Species" className="col-span-2 sm:col-span-4">
+                    {c.common || "–"}
+                    {c.scientific ? <span className="italic text-ink-muted"> ({c.scientific})</span> : null}
+                  </FormBox>
+                </FormGrid>
+              ))}
+            </Section>
+
+            <Section n={3} title="Country of production">
+              <ul className="grid gap-1.5">
+                {origins.map((code) => {
+                  const t = tier.get(code);
+                  return (
+                    <li key={code} className="flex flex-wrap items-baseline gap-x-3 text-[16px]">
+                      {countryName(code)}
+                      {t ? (
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-muted">
+                          {RISK_META[t].icon} {RISK_META[t].label} under the EU benchmark
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </Section>
+
+            <Section n={4} title="Geolocation of the plots of land">
+              <p className="mb-4 text-[15px] italic text-ink-muted">
+                {plotCount} {plotCount === 1 ? "plot" : "plots"} from {doc.commodities.reduce((n, c) => n + c.producers.length, 0)} producers, each drawn at its own scale.
+              </p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {doc.commodities.flatMap((c) => c.producers).map((p, pi) => (
+                  <div key={pi}>
+                    <p className="flex flex-wrap items-baseline justify-between gap-2 border-b border-rule pb-1">
+                      <span className="text-[16px] font-medium">{p.name}</span>
+                      <span className="numerals text-[11px] text-ink-muted">{p.country}</span>
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-3">
+                      {p.plots.map((pl) => (
+                        <li key={pl.ref} className="grid w-[112px] justify-items-center gap-1 border border-rule bg-paper/40 px-2 pb-2 pt-1.5">
+                          <PlotSketch geometry={pl.geometry} verdict="compliant" size={84} delay={0.2 + sketch++ * 0.15} label={`Outline of plot ${pl.ref}`} />
+                          <span className="numerals text-[11px]">{pl.ref}</span>
+                          {pl.area ? <span className="numerals text-[10px] text-ink-subtle">{num(pl.area, 2)} HA</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
+              </div>
+            </Section>
+
+            <Section n={5} title="Reference to existing statements">
+              <p className="text-[15.5px]">{doc.associated.length ? `${doc.associated.length} statements referenced.` : "None. This statement covers the full due diligence for this shipment."}</p>
+            </Section>
+
+            <Section n={6} title="Conclusion">
+              <p className="text-[16.5px] leading-[1.65]">{d.summary}</p>
+              <blockquote className="mt-4 border-l-2 border-ink pl-4 text-[15.5px] italic leading-relaxed text-ink-muted">
+                By submitting this due diligence statement the operator confirms that due diligence in accordance with Regulation (EU) 2023/1115 was carried out and that no or only a negligible
+                risk was found that the relevant products do not comply with Article 3, point (a) or (b), of that Regulation.
+              </blockquote>
+            </Section>
+
+            <Section n={7} title="Signature" className="border-b-0">
+              <FormGrid className="grid-cols-1 sm:grid-cols-2">
+                <FormBox label="Signed for and on behalf of">{doc.operatorName || "–"}</FormBox>
+                <FormBox label="Date" mono>
+                  {filed ? stampDate(d.submittedAt) : "ON SUBMISSION"}
+                </FormBox>
+                <FormBox label="EU reference number" mono>
+                  {d.referenceNumber ?? <span className="font-serif text-[14px] italic text-ink-muted">issued on submission</span>}
+                </FormBox>
+                <FormBox label="Verification number" mono>
+                  {d.verificationNumber ?? <span className="font-serif text-[14px] italic text-ink-muted">issued on submission</span>}
+                </FormBox>
+              </FormGrid>
+              <p className="mt-3 text-[13.5px] italic text-ink-muted">
+                Demo submission: Plotline simulates the EU information system (TRACES). The numbers above were generated in this workspace and were not issued by the EU.
+              </p>
+            </Section>
+          </Paper>
+
+          {/* Margin log */}
+          <aside className="grid gap-6 print:hidden xl:sticky xl:top-[calc(var(--masthead-h)+1.5rem)]">
+            <div className="border border-rule bg-sheet/90 p-4">
+              <p className="label-caps mb-3 text-ink">Margin log</p>
+              <ol className="grid">
+                <MarginEntry at={d.createdAt} tone="neutral" title="Prepared" note={`Drafted from shipment ${d.shipmentReference}.`} />
+                {d.submissions.map((s) => (
+                  <MarginEntry
+                    key={s.id}
+                    at={s.at}
+                    tone={s.status === "rejected" ? "noncompliant" : s.status === "submitted" || s.status === "accepted" ? "brand" : "pending"}
+                    title={s.status.replace(/_/g, " ")}
+                    note={s.message}
+                    ref_={s.referenceNumber}
+                  />
+                ))}
+                {!d.submissions.length ? <li className="py-2 text-[14px] italic text-ink-muted">Not submitted yet.</li> : null}
               </ol>
-            ) : (
-              <p className="px-5 py-4 text-sm text-muted">Not submitted yet.</p>
-            )}
-          </Card>
+            </div>
+            {d.referenceNumber ? (
+              <div className="grid gap-2 border border-rule bg-sheet/90 p-4">
+                <p className="label-caps text-ink">For the customs declaration</p>
+                <CopyField value={d.referenceNumber} label="Copy EU reference number" />
+                {d.verificationNumber ? <CopyField value={d.verificationNumber} label="Copy verification number" /> : null}
+              </div>
+            ) : null}
+            <div className="border border-rule bg-sheet/90 p-4">
+              <p className="label-caps mb-2 text-ink">Status</p>
+              <DdsBadge status={d.status} />
+              <p className="mt-2 text-[14px] italic text-ink-muted">Kept with its evidence pack for five years, as Article 12 requires.</p>
+            </div>
+          </aside>
         </div>
       </div>
 
@@ -361,14 +345,38 @@ export default function StatementPage() {
         open={confirm}
         onOpenChange={setConfirm}
         title="Submit this statement?"
-        description="This is a demo submission. Plotline simulates the EU information system (TRACES): reference numbers are generated here and nothing is sent to the EU."
-        confirmLabel="Submit statement"
+        description="This is a demo submission. Plotline simulates the EU information system (TRACES): the reference numbers are generated here and nothing is sent to the EU."
+        confirmLabel="Submit (demo)"
         loading={submit.isPending}
         onConfirm={async () => {
-          await submit.mutateAsync().catch(() => null);
+          const ok = await submit
+            .mutateAsync()
+            .then(() => true)
+            .catch(() => false);
           setConfirm(false);
+          if (ok) {
+            setFresh(true);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
         }}
       />
     </PageContainer>
   );
 }
+
+function MarginEntry({ at, title, note, tone, ref_ }: { at: string; title: string; note: string; tone: "neutral" | "brand" | "pending" | "noncompliant"; ref_?: string | null }) {
+  return (
+    <li className="grid grid-cols-[12px_minmax(0,1fr)] gap-x-2.5 border-b border-rule py-2.5 last:border-b-0">
+      <Glyph tone={tone} className="mt-1" />
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-baseline justify-between gap-x-2">
+          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.08em]">{title}</span>
+          <span className="numerals text-[10.5px] text-ink-subtle">{logTime(at)}</span>
+        </p>
+        <p className="mt-0.5 text-[14px] leading-snug text-ink-muted">{note}</p>
+        {ref_ ? <p className="numerals mt-0.5 text-[11px] text-ink">{ref_}</p> : null}
+      </div>
+    </li>
+  );
+}
+
