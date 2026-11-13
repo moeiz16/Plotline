@@ -193,7 +193,7 @@ Full report with per-region numbers: [ml/artifacts/EVAL.md](ml/artifacts/EVAL.md
 
 ### Tests and performance
 
-- 332 backend tests: API, platform security and tenant isolation, domain rules, migrations, and Temporal campaigns on the time-skipping test server.
+- 349 backend tests: API, platform security and tenant isolation, domain rules, migrations, and Temporal campaigns on the time-skipping test server.
 - 9 ML export and notebook parity tests.
 - CI runs lint, migrations, tests, the offline seed, the evaluation gates and the production web build.
 
@@ -216,14 +216,14 @@ takes about 1.7 s; `make reset` (recreate the database and seed) about 2.4 s.
 
 ## Screenshots
 
-<!-- Image files live in docs/screenshots/; adjust names to the final set. -->
+Synthetic demo data throughout (the Northbank sample organisation).
 
 | | |
 |---|---|
-| ![Landing page](docs/screenshots/01-landing.png) | ![Overview](docs/screenshots/02-overview.png) |
-| ![Plot map](docs/screenshots/03-map.png) | ![Plot assessment](docs/screenshots/04-plot.png) |
-| ![Shipment checks](docs/screenshots/05-shipment.png) | ![Due diligence statement](docs/screenshots/06-statement.png) |
-| ![Supplier campaign](docs/screenshots/07-campaign.png) | ![Supplier upload on a phone](docs/screenshots/08-supplier-mobile.png) |
+| ![Landing page: the 31 December 2020 cut-off](docs/screenshots/01-landing-hero.jpg) | ![Atlas with a plot selected and the inspector open](docs/screenshots/07-atlas-inspector.jpg) |
+| ![Plot record with satellite boundary and verdict](docs/screenshots/10-plot-record.jpg) | ![Blocked shipment manifest traced to its plots](docs/screenshots/12-manifest-blocked.jpg) |
+| ![Submitted due diligence statement (demo submission)](docs/screenshots/13-statement-submitted.jpg) | ![Supplier campaign route with reviewer approval](docs/screenshots/14-campaign-route.jpg) |
+| ![Atlas in the night theme](docs/screenshots/18-atlas-inspector-dark.jpg) | ![Supplier upload page on a phone](docs/screenshots/22-supplier-upload-phone.jpg) |
 
 ## Compliance alignment
 
