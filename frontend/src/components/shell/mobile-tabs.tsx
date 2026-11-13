@@ -86,6 +86,7 @@ export function MobileTabBar({ me }: { me: Me }) {
   return (
     <>
       <nav
+        data-mobile-tabs
         aria-label="Sections"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/70 bg-paper/95 pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:bg-paper/85 supports-[backdrop-filter]:backdrop-blur-md lg:hidden"
       >

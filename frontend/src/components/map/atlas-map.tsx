@@ -143,6 +143,11 @@ export function AtlasMap({
         const src = (e as unknown as { sourceId?: string }).sourceId;
         if (src && !src.startsWith("plot")) setNotice("Background map unavailable right now. Plots are still shown.");
       });
+      mm.once("load", () => {
+        // Narrow maps keep the credits folded behind the (i) button so they never cover the plots.
+        if (el.current && el.current.clientWidth < 720)
+          el.current.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+      });
       mm.on("style.load", () => {
         addOverlays(mm);
         setStyled((n) => n + 1);

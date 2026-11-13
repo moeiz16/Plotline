@@ -187,7 +187,13 @@ export function DrawMap({
           setNotice("Background imagery unavailable right now. You can still place your plot.");
       });
       map.on("style.load", () => addOverlays(map));
-      map.on("load", () => !cancelled && setReady(true));
+      map.on("load", () => {
+        if (cancelled) return;
+        // Narrow maps keep the credits folded behind the (i) button so they never cover the plots.
+        if (el.current && el.current.clientWidth < 720)
+          el.current.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+        setReady(true);
+      });
       map.on("click", (e) => {
         const c: Position = [round6(e.lngLat.lng), round6(e.lngLat.lat)];
         if (state.current.mode === "point") handlers.current.onPoint(c);

@@ -278,7 +278,7 @@ export function MastheadTabs({ me }: { me: Me }) {
  */
 export function Masthead({ me }: { me: Me }) {
   return (
-    <header className="sticky top-0 z-40 bg-paper/95 supports-[backdrop-filter]:bg-paper/85 supports-[backdrop-filter]:backdrop-blur-md">
+    <header data-masthead className="sticky top-0 z-40 bg-paper/95 supports-[backdrop-filter]:bg-paper/85 supports-[backdrop-filter]:backdrop-blur-md">
       {/* Desktop tier 1 */}
       <div className="hidden h-8 items-center justify-between gap-4 border-b border-rule px-5 lg:flex">
         <p className="label-caps min-w-0 truncate text-ink-muted">

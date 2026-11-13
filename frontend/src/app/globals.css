@@ -409,6 +409,24 @@
     stroke-dashoffset: 0;
   }
 }
+/* A rubber stamp lands: drops from above, overshoots and settles, keeping its own angle. */
+@keyframes stamp-land {
+  0% {
+    opacity: 0;
+    transform: rotate(calc(var(--stamp-angle, -4deg) - 12deg)) scale(2.2) translateY(-10px);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(var(--stamp-angle, -4deg)) scale(0.94);
+  }
+  100% {
+    opacity: 0.9;
+    transform: rotate(var(--stamp-angle, -4deg)) scale(1);
+  }
+}
+.stamp-land {
+  animation: stamp-land var(--dur-slow) var(--ease-survey) both;
+}
 /* Skeleton: a survey sweep passes over an unread row. */
 @keyframes sweep {
   from {
@@ -478,11 +496,22 @@
   background: var(--panel) !important;
 }
 .dark .maplibregl-ctrl-attrib {
-  background: rgb(17 24 30 / 0.8) !important;
-  color: var(--ink-muted);
+  background: rgb(17 24 30 / 0.92) !important;
+  color: var(--ink);
 }
-.dark .maplibregl-ctrl-attrib a {
-  color: var(--ink-muted);
+.dark .maplibregl-ctrl-attrib a,
+.dark .maplibregl-ctrl-attrib-inner {
+  color: var(--ink);
+}
+.dark .maplibregl-ctrl-attrib-button {
+  filter: invert(0.9);
+  background-color: transparent;
+}
+/* Phones: map credits stay folded behind the (i) button until it is pressed, so they never cover plots. */
+@media (max-width: 719px) {
+  .maplibregl-ctrl-attrib.maplibregl-compact-show:not(:focus-within) .maplibregl-ctrl-attrib-inner {
+    display: none;
+  }
 }
 .maplibregl-ctrl-scale {
   font-family: var(--font-mono);
@@ -541,6 +570,15 @@
 @media print {
   body {
     background: #fff;
+  }
+  /* A statement prints as the paper only: no masthead, no phone tab bar, no desk chrome. */
+  [data-print="hide"],
+  header[data-masthead],
+  nav[data-mobile-tabs] {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
   }
   .paper-grain::before {
     display: none;

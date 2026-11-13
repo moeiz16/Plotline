@@ -138,6 +138,9 @@ export function PlotMap({
         addOverlays(map);
       });
       map.on("load", () => {
+        // Small sheets keep the credits folded behind the (i) button so they never cover the plots.
+        if (el.current && el.current.clientWidth < 720)
+          el.current.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
         if (!cancelled) setReady(true);
       });
 
