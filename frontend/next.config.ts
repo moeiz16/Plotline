@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
     return [{ source: "/((?!api/).*)", headers: securityHeaders }];
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "recharts"],
+    optimizePackageImports: ["lucide-react"],
   },
 };
 
