@@ -1,16 +1,16 @@
 "use client";
 
-import { ArrowRight, Sparkle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { CardDivider, FieldCard } from "@/components/marketing/field-card";
+import { DEMO } from "@/components/marketing/demo-entry";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/display";
 import { Field, Input, PasswordInput } from "@/components/ui/input";
 import { ApiError, errorMessage } from "@/lib/api/client";
 import { useSession } from "@/lib/api/session";
-
-export const DEMO = { email: "amelie.kraus@northbank.example", password: "Northbank-Demo-2026" };
 
 function safeNext(next: string | null) {
   return next && next.startsWith("/app") ? next : "/app";
@@ -27,7 +27,7 @@ export function SignInForm() {
   }, [status, router, params]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(params.get("demo") ? "The Northbank atlas did not open. Please try again." : null);
   const [pending, setPending] = useState(false);
 
   async function submit(e?: FormEvent, creds?: { email: string; password: string }) {
@@ -49,11 +49,21 @@ export function SignInForm() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-[-0.01em]">Sign in to Plotline</h1>
-      <p className="mt-1.5 text-sm text-muted">Welcome back. Pick up where your team left off.</p>
-
-      <form onSubmit={submit} className="mt-7 grid gap-4" noValidate>
+    <FieldCard
+      number="01"
+      kind="Sign in"
+      title="Sign in to your atlas"
+      description="Pick up the survey where your team left it."
+      footer={
+        <p className="text-center text-[15px] text-ink-muted">
+          New to Plotline?{" "}
+          <Link href="/signup" className="italic text-marker-ink underline decoration-marker/50 underline-offset-4 hover:decoration-marker">
+            Start your atlas →
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={submit} className="grid gap-4" noValidate>
         {error ? (
           <Callout tone="noncompliant" className="py-2.5">
             <span role="alert">{error}</span>
@@ -70,16 +80,13 @@ export function SignInForm() {
         </Button>
       </form>
 
-      <div className="my-6 flex items-center gap-3 text-xs text-subtle">
-        <span className="h-px flex-1 bg-border" /> or explore first <span className="h-px flex-1 bg-border" />
-      </div>
+      <CardDivider>or walk the sample atlas</CardDivider>
 
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <p className="text-sm font-medium">Try the demo workspace</p>
-        <p className="mt-1 text-[13px] text-muted">
-          Northbank Cocoa &amp; Coffee Imports, Hamburg: sample suppliers, plots and shipments. All data is synthetic.
-        </p>
+      <div className="border border-dashed border-rule-strong p-4">
+        <p className="label-caps text-ink">Northbank Cocoa &amp; Coffee Imports · Hamburg</p>
+        <p className="mt-1.5 text-[14px] italic leading-relaxed text-ink-muted">Sample suppliers, plots and shipments. Every name and figure is synthetic.</p>
         <Button
+          variant="secondary"
           className="mt-3 w-full"
           disabled={pending}
           onClick={() => {
@@ -88,17 +95,10 @@ export function SignInForm() {
             void submit(undefined, DEMO);
           }}
         >
-          <Sparkle /> Use the demo account
+          Open the Northbank atlas
         </Button>
-        <p className="mt-2 text-center text-xs text-subtle">Fills in {DEMO.email}</p>
+        <p className="mt-2 text-center numerals text-[11px] text-ink-subtle">Fills in {DEMO.email}</p>
       </div>
-
-      <p className="mt-6 text-center text-sm text-muted">
-        New to Plotline?{" "}
-        <Link href="/signup" className="font-medium text-brand-fg underline-offset-4 hover:underline">
-          Create an account
-        </Link>
-      </p>
-    </div>
+    </FieldCard>
   );
 }

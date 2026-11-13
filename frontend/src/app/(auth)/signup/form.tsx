@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { FieldCard } from "@/components/marketing/field-card";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/display";
 import { Field, Input, PasswordInput } from "@/components/ui/input";
@@ -39,10 +40,21 @@ export function SignUpForm() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-[-0.01em]">Create your Plotline account</h1>
-      <p className="mt-1.5 text-sm text-muted">Set up your company’s workspace. You can invite colleagues and suppliers next.</p>
-      <form onSubmit={submit} className="mt-7 grid gap-4" noValidate>
+    <FieldCard
+      number="02"
+      kind="New atlas"
+      title="Start your atlas"
+      description="Set up your company’s sheet. You can invite colleagues and send suppliers their upload links next."
+      footer={
+        <p className="text-center text-[15px] text-ink-muted">
+          Already have an atlas?{" "}
+          <Link href="/signin" className="italic text-marker-ink underline decoration-marker/50 underline-offset-4 hover:decoration-marker">
+            Sign in →
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={submit} className="grid gap-4" noValidate>
         {errors.form ? (
           <Callout tone="noncompliant" className="py-2.5">
             <span role="alert">{errors.form}</span>
@@ -61,16 +73,10 @@ export function SignUpForm() {
           <PasswordInput id="password" autoComplete="new-password" value={form.password} onChange={set("password")} aria-invalid={!!errors.password} />
         </Field>
         <Button type="submit" variant="primary" size="lg" loading={pending} className="mt-1 w-full">
-          Create account <ArrowRight />
+          Start your atlas <ArrowRight />
         </Button>
-        <p className="text-center text-xs text-subtle">Farmer and plot data is kept to the minimum the regulation requires.</p>
+        <p className="text-center text-[13.5px] italic text-ink-subtle">Farmer and plot data is kept to the minimum the regulation requires.</p>
       </form>
-      <p className="mt-6 text-center text-sm text-muted">
-        Already have an account?{" "}
-        <Link href="/signin" className="font-medium text-brand-fg underline-offset-4 hover:underline">
-          Sign in
-        </Link>
-      </p>
-    </div>
+    </FieldCard>
   );
 }
