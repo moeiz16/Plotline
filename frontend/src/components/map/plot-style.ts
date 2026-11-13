@@ -2,7 +2,7 @@
 
 import type { Map as MLMap } from "maplibre-gl";
 import { MARKER_HEX, VERDICT_MAP_COLOR } from "@/components/domain/status";
-import type { Geometry, PlotFeature, PlotFeatureCollection, Verdict } from "@/lib/api/types";
+import type { Geometry, PlotFeatureCollection, Verdict } from "@/lib/api/types";
 import { boundsOf, centroidOf, type Bounds } from "./base";
 import { ensureHatchPattern } from "./hatch";
 
@@ -49,8 +49,6 @@ export interface AtlasProps {
   country: string;
 }
 
-type RawProps = PlotFeature["properties"] & { lossFirstYear?: number | null; lossByYear?: Record<string, number> };
-
 /**
  * Attach loss year / loss hectares to every feature. Uses the map endpoint's `lossFirstYear` and
  * `lossByYear` when present; otherwise falls back to the plot headline ("2.4 ha of forest cleared in 2022")
@@ -58,7 +56,7 @@ type RawProps = PlotFeature["properties"] & { lossFirstYear?: number | null; los
  */
 export function enrich(fc: PlotFeatureCollection | undefined, hints: Map<string, { headline?: string | null; country?: string }> = new Map()) {
   const features = (fc?.features ?? []).map((f) => {
-    const p = f.properties as RawProps;
+    const p = f.properties;
     const hint = hints.get(p.id);
     let lossYear: number | null = typeof p.lossFirstYear === "number" ? p.lossFirstYear : null;
     let lossHa = p.lossByYear ? Object.values(p.lossByYear).reduce((s, v) => s + Number(v || 0), 0) : 0;

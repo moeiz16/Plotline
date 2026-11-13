@@ -96,7 +96,7 @@ Permissions (returned by `/auth/me` as `membership.permissions`):
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/plots?supplierId=&verdict=&country=&commodity=&q=` | `PlotListItem[]` |
-| GET | `/plots/map?…same filters` | GeoJSON `FeatureCollection`; feature `properties = { id, reference, verdict, commodity, supplierName, areaHa, kind }`; points are returned as polygons (circle of the declared area) **and** `properties.kind = "point"` |
+| GET | `/plots/map?…same filters` | GeoJSON `FeatureCollection`; feature `properties = { id, reference, verdict, commodity, supplierName, areaHa, kind, lossFirstYear, lossByYear }` (`lossFirstYear`: first year with forest loss after 2020, or `null`; `lossByYear`: hectares lost per year after 2020, e.g. `{ "2022": 2.4 }`, from the latest assessment); points are returned as polygons (circle of the declared area) **and** `properties.kind = "point"` |
 | POST | `/plots/validate` | `{ geometry, country, declaredAreaHa? }` → `{ valid, issues: Issue[], areaHa, kind, normalized: geometry }` (no write) |
 | POST | `/plots` | `{ supplierId, reference, commodity, country, geometry, declaredAreaHa?, producerName? }` → `Plot` (`422` with `errors` when invalid) |
 | POST | `/plots/import` | multipart `file` (`.geojson`/`.json`, `.kml`, `.csv` with `reference,latitude,longitude[,area_ha]` or `wkt`), `supplierId`, `commodity` → `{ created: PlotListItem[], rejected: [{ reference, row, issues: Issue[] }] }` |

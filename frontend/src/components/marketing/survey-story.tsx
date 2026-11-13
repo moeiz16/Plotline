@@ -50,7 +50,7 @@ const STEPS = [
   {
     fig: "IV",
     layer: "Verdict",
-    title: "Non-compliant: 2.4 ha cleared in 2022.",
+    title: "Non-compliant: 2.4\u00a0ha cleared in 2022.",
     body: "Cocoa from this plot cannot enter the EU. The verdict, the imagery and the data versions behind it go on the record, and a reviewer confirms it before any shipment is blocked.",
     key: (
       <>

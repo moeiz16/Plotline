@@ -305,6 +305,10 @@ export interface PlotFeatureProps {
   supplierName: string;
   areaHa: number;
   kind: GeometryKind;
+  /** First year with forest loss after the 2020 cut-off, or null when none was recorded. */
+  lossFirstYear?: number | null;
+  /** Hectares of forest lost after the cut-off, per year ("2022": 2.4). */
+  lossByYear?: Record<string, number>;
 }
 
 export interface PlotFeature {
