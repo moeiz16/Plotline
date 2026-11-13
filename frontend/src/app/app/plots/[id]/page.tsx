@@ -204,11 +204,9 @@ export default function PlotRecordPage() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <h1 className="numerals text-[30px] font-medium leading-none tracking-[-0.02em] sm:text-[38px]">{plot.reference}</h1>
-              <span className="inline-block animate-[pop-in_var(--dur-slow)_var(--ease-out)_both] [animation-delay:200ms]">
-                <Stamp tone={meta.tone} angle={-3}>
-                  {meta.label}
-                </Stamp>
-              </span>
+              <Stamp tone={meta.tone} angle={-3} land delay={200}>
+                {meta.label}
+              </Stamp>
             </div>
             <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[16px] text-ink-muted">
               <Link href={`/app/suppliers/${plot.supplierId}`} className="text-ink underline decoration-rule-strong underline-offset-4 hover:decoration-ink">

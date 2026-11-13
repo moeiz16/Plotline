@@ -116,7 +116,33 @@ export function Badge({
 export const StatusTag = Badge;
 
 /** A rubber stamp: bordered mono caps set at a slight angle (statements, evidence packs). */
-export function Stamp({ tone = "brand", children, className, angle = -4 }: { tone?: Tone; children: React.ReactNode; className?: string; angle?: number }) {
+const STAMP_SIZE = {
+  sm: "border-[1.5px] px-1.5 py-0.5 text-[10px] tracking-[0.12em]",
+  md: "border-2 px-2.5 py-1 text-[11px] tracking-[0.14em]",
+  lg: "border-[3px] px-3.5 py-1.5 text-[14px] tracking-[0.16em]",
+} as const;
+
+/**
+ * Rubber stamp. `land` plays a one-off stamping animation that keeps the stamp's own rotation
+ * (`stamp-land` keyframe reads `--stamp-angle`); reduced motion shows the final state.
+ */
+export function Stamp({
+  tone = "brand",
+  children,
+  className,
+  angle = -4,
+  size = "md",
+  land = false,
+  delay = 0,
+}: {
+  tone?: Tone;
+  children: React.ReactNode;
+  className?: string;
+  angle?: number;
+  size?: keyof typeof STAMP_SIZE;
+  land?: boolean;
+  delay?: number;
+}) {
   const border = {
     neutral: "border-ink-subtle",
     brand: "border-marker",
@@ -127,8 +153,8 @@ export function Stamp({ tone = "brand", children, className, angle = -4 }: { ton
   }[tone];
   return (
     <span
-      className={cn("inline-block border-2 px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] opacity-90", border, toneText[tone], className)}
-      style={{ transform: `rotate(${angle}deg)` }}
+      className={cn("stamp inline-block font-mono font-semibold uppercase opacity-90", STAMP_SIZE[size], border, toneText[tone], land && "stamp-land", className)}
+      style={{ "--stamp-angle": `${angle}deg`, transform: `rotate(${angle}deg)`, animationDelay: land && delay ? `${delay}ms` : undefined } as React.CSSProperties}
     >
       {children}
     </span>
@@ -384,14 +410,25 @@ export function Meter({ value, className, tone = "brand", label }: { value: numb
 }
 
 /* ── Copyable value ─────────────────────────────────────────────────────── */
-export function CopyField({ value, label, className }: { value: string; label?: string; className?: string }) {
+/** A value to copy. Secondary by default; pass `variant="primary"` only when copying is the one main action of the view. */
+export function CopyField({
+  value,
+  label,
+  className,
+  variant = "secondary",
+}: {
+  value: string;
+  label?: string;
+  className?: string;
+  variant?: "primary" | "secondary";
+}) {
   const [done, setDone] = React.useState(false);
   return (
     <div className={cn("flex min-w-0 items-center gap-2 rounded-sm border border-dashed border-rule-strong bg-sheet-2/60 p-1 pl-3", className)}>
       <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink">{value}</code>
       <Button
         size="sm"
-        variant="primary"
+        variant={variant}
         aria-label={label ?? "Copy link"}
         onClick={async () => {
           const ok = await copyText(value);

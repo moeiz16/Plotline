@@ -11,11 +11,11 @@ export const fieldClass =
 
 export const Input = React.forwardRef<
   HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement> & { leading?: React.ReactNode; trailing?: React.ReactNode }
->(({ className, leading, trailing, ...props }, ref) => {
-  if (!leading && !trailing) return <input ref={ref} className={cn(fieldClass, "h-10", className)} {...props} />;
+  React.InputHTMLAttributes<HTMLInputElement> & { leading?: React.ReactNode; trailing?: React.ReactNode; wrapperClassName?: string }
+>(({ className, leading, trailing, wrapperClassName, ...props }, ref) => {
+  if (!leading && !trailing && !wrapperClassName) return <input ref={ref} className={cn(fieldClass, "h-10", className)} {...props} />;
   return (
-    <div className="relative flex items-center">
+    <div className={cn("relative flex items-center", wrapperClassName)}>
       {leading ? <span className="pointer-events-none absolute left-2.5 flex text-subtle [&_svg]:size-4">{leading}</span> : null}
       <input ref={ref} className={cn(fieldClass, "h-10", leading && "pl-8", trailing && "pr-9", className)} {...props} />
       {trailing ? <span className="absolute right-2 flex items-center text-subtle">{trailing}</span> : null}

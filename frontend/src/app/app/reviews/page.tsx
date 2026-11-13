@@ -225,7 +225,7 @@ export default function ReviewsPage() {
                         </span>
                       </span>
                       <span className="hidden pt-0.5 sm:block">
-                        <ChangeBadge level={p.changeLevel} />
+                        <ChangeBadge level={p.changeLevel} short />
                       </span>
                       <span className="numerals hidden pt-0.5 text-right text-[13px] sm:block">{ha(p.areaHa)}</span>
                       <span className="hidden pt-0.5 text-[13.5px] text-ink-muted sm:block">{p.assessedAt ? relative(p.assessedAt) : "Not yet"}</span>

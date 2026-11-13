@@ -115,11 +115,20 @@ export const CHANGE_META: Record<ChangeLevel, Meta> = {
   high: { label: "High", tone: "noncompliant", icon: <Glyph tone="noncompliant" /> },
 };
 
-export function ChangeBadge({ level, className, prefix }: { level: ChangeLevel | null | undefined; className?: string; prefix?: string }) {
+/** `short` renders a missing signal as "N/A" (with the full wording for screen readers) for narrow ledger columns. */
+export function ChangeBadge({ level, className, prefix, short = false }: { level: ChangeLevel | null | undefined; className?: string; prefix?: string; short?: boolean }) {
   if (!level)
     return (
       <Badge tone="pending" className={className}>
-        {prefix ? `${prefix}: ` : ""}Not available
+        {prefix ? `${prefix}: ` : ""}
+        {short ? (
+          <>
+            <span aria-hidden>N/A</span>
+            <span className="sr-only">Not available</span>
+          </>
+        ) : (
+          "Not available"
+        )}
       </Badge>
     );
   const m = CHANGE_META[level];

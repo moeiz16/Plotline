@@ -44,7 +44,7 @@ function RequestSlip({ supplier, canWrite }: { supplier: SupplierDetail; canWrit
                 Issued {stampDate(new Date().toISOString())}
               </LandingStamp>
             </div>
-            <CopyField value={url} label="Copy upload link" />
+            <CopyField value={url} label="Copy upload link" variant="primary" />
             <p className="text-[14px] italic text-ink-muted">
               Valid until {dateLong(link.data!.expiresAt)}. Any earlier link for this supplier stops working, and a fresh link reopens submissions if they sent plots before.
             </p>

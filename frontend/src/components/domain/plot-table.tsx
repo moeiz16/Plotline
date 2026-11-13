@@ -111,7 +111,7 @@ export function PlotTable({ plots, showSupplier = true, numbered = true }: { plo
               </td>
               <td>
                 {p.changeLevel ? (
-                  <ChangeBadge level={p.changeLevel} />
+                  <ChangeBadge level={p.changeLevel} short />
                 ) : (
                   <span className="text-[13.5px] italic text-ink-muted">{p.assessedAt ? "Too cloudy" : "Not yet"}</span>
                 )}

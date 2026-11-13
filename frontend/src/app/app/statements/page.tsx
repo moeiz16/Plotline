@@ -51,7 +51,7 @@ function StatementLine({ d, i }: { d: DdsListItem; i: number }) {
       <span className="numerals hidden text-[12px] text-ink-muted md:block">{stampDate(d.createdAt)}</span>
       <div className="col-span-3 md:col-span-1">
         {filed ? (
-          <Stamp tone={d.status === "rejected" ? "noncompliant" : d.status === "accepted" ? "compliant" : "brand"} angle={-3} className="px-1.5 py-0.5 text-[10px]">
+          <Stamp tone={d.status === "rejected" ? "noncompliant" : d.status === "accepted" ? "compliant" : "brand"} angle={-3} size="sm">
             Filed {stampDate(d.submittedAt)}
           </Stamp>
         ) : (

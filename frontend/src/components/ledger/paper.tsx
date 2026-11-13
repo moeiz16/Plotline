@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Stamp, type Tone } from "@/components/ui/display";
 import { cn } from "@/lib/utils";
 
@@ -67,11 +67,12 @@ export function LandingStamp({
   size?: "md" | "lg";
 }) {
   const reduce = useReducedMotion();
-  const big = size === "lg" ? "border-[3px] px-3.5 py-1.5 text-[14px] tracking-[0.16em]" : "";
+  // The ink ring is removed once it has faded, so its scaled box never widens the page on phones.
+  const [ringDone, setRingDone] = useState(false);
   if (!land || reduce)
     return (
       <span className={cn("inline-block", className)}>
-        <Stamp tone={tone} angle={angle} className={big}>
+        <Stamp tone={tone} angle={angle} size={size}>
           {children}
         </Stamp>
       </span>
@@ -84,18 +85,21 @@ export function LandingStamp({
         animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
         transition={{ delay, type: "spring", stiffness: 520, damping: 26, mass: 1.1 }}
       >
-        <Stamp tone={tone} angle={angle} className={big}>
+        <Stamp tone={tone} angle={angle} size={size}>
           {children}
         </Stamp>
       </motion.span>
-      <motion.span
-        aria-hidden
-        className="pointer-events-none absolute inset-[-6px] border-2 border-current"
-        style={{ rotate: angle, color: "var(--marker)" }}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: [0, 0.45, 0], scale: [0.9, 1.25, 1.4] }}
-        transition={{ delay: delay + 0.16, duration: 0.6, ease: "easeOut" }}
-      />
+      {ringDone ? null : (
+        <motion.span
+          aria-hidden
+          onAnimationComplete={() => setRingDone(true)}
+          className="pointer-events-none absolute inset-[-6px] border-2 border-current"
+          style={{ rotate: angle, color: "var(--marker)" }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: [0, 0.45, 0], scale: [0.9, 1.25, 1.4] }}
+          transition={{ delay: delay + 0.16, duration: 0.6, ease: "easeOut" }}
+        />
+      )}
     </span>
   );
 }
