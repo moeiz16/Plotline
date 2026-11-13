@@ -1,20 +1,21 @@
 "use client";
 
-import { ChevronRight, Megaphone, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { CampaignStatusBadge, CountryLabel } from "@/components/domain/status";
+import { dMinus, stampDate } from "@/components/ledger/format";
 import { PageContainer } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
-import { Card, EmptyState, ErrorState, LoadingBlock, Meter, PageHeader } from "@/components/ui/display";
+import { EmptyState, ErrorState, Glyph, LoadingBlock, PageHeader, type Tone } from "@/components/ui/display";
 import { Field, Input, Select } from "@/components/ui/input";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "@/components/ui/overlays";
 import { ApiError } from "@/lib/api/client";
 import { useCampaigns, useCreateCampaign, useSuppliers } from "@/lib/api/hooks";
 import { useSession } from "@/lib/api/session";
-import type { Commodity } from "@/lib/api/types";
-import { COMMODITIES, commodityLabel, date, daysUntil, pct } from "@/lib/format";
+import type { CampaignListItem, Commodity } from "@/lib/api/types";
+import { COMMODITIES, commodityLabel, daysUntil, plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function isoIn(days: number) {
@@ -23,7 +24,8 @@ function isoIn(days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function StartCampaignDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+/* ── Plan a route: start a campaign ─────────────────────────────────────────── */
+function PlanRouteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const create = useCreateCampaign();
   const suppliers = useSuppliers();
   const router = useRouter();
@@ -54,11 +56,7 @@ function StartCampaignDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        size="lg"
-        title="Start a data request campaign"
-        description="Ask suppliers to map their plots. Plotline sends reminders, checks each upload and brings submissions to you for approval."
-      >
+      <DialogContent size="lg" title="Plan a data request route" description="Each supplier becomes a stop. Plotline sends their link, reminds them on schedule, checks every upload and brings each stop to you for approval.">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <Field label="Campaign name" htmlFor="c-name" error={errors.name}>
             <Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!errors.name} />
@@ -81,7 +79,7 @@ function StartCampaignDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               </Select>
             </Field>
             <Field label="Due date" htmlFor="c-due" error={errors.dueDate}>
-              <Input id="c-due" type="date" value={dueDate} min={isoIn(1)} onChange={(e) => setDueDate(e.target.value)} />
+              <Input id="c-due" type="date" value={dueDate} min={isoIn(1)} onChange={(e) => setDueDate(e.target.value)} className="font-mono" />
             </Field>
             <Field label="Reminders" htmlFor="c-every">
               <Select id="c-every" value={every} onChange={(e) => setEvery(e.target.value)}>
@@ -93,51 +91,51 @@ function StartCampaignDialog({ open, onOpenChange }: { open: boolean; onOpenChan
           </div>
           <fieldset className="grid gap-2">
             <div className="flex items-center justify-between gap-2">
-              <legend className="text-[13px] font-medium">Suppliers</legend>
+              <legend className="label-caps text-ink">Stops on the route</legend>
               {eligible.length ? (
-                <button
-                  type="button"
-                  className="text-[13px] font-medium text-brand-fg hover:underline"
-                  onClick={() => setPicked(picked.length === eligible.length ? [] : eligible.map((s) => s.id))}
-                >
+                <Button type="button" variant="link" onClick={() => setPicked(picked.length === eligible.length ? [] : eligible.map((s) => s.id))}>
                   {picked.length === eligible.length ? "Clear all" : "Select all"}
-                </button>
+                </Button>
               ) : null}
             </div>
-            <div className="max-h-60 overflow-y-auto rounded-md border border-border scrollbar-thin">
+            <div className="max-h-60 overflow-y-auto border border-ink/40 scrollbar-thin">
               {suppliers.isPending ? (
-                <LoadingBlock className="p-3" rows={3} />
+                <LoadingBlock className="px-3" rows={3} />
               ) : !eligible.length ? (
-                <p className="p-4 text-sm text-muted">No suppliers grow {commodityLabel(commodity).toLowerCase()} yet.</p>
+                <p className="p-4 text-[15px] italic text-ink-muted">No suppliers grow {commodityLabel(commodity).toLowerCase()} yet.</p>
               ) : (
-                <ul className="divide-y divide-border">
-                  {eligible.map((s) => (
-                    <li key={s.id}>
-                      <label className={cn("flex cursor-pointer items-center gap-3 px-3 py-2.5", picked.includes(s.id) && "bg-brand-soft/50")}>
-                        <input
-                          type="checkbox"
-                          className="size-4 accent-[var(--brand)]"
-                          checked={picked.includes(s.id)}
-                          onChange={(e) => setPicked((p) => (e.target.checked ? [...p, s.id] : p.filter((x) => x !== s.id)))}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{s.name}</span>
-                          <span className="block text-xs text-muted">
-                            <CountryLabel code={s.country} name={s.countryName} /> · {s.plots} plots mapped
+                <ol>
+                  {eligible.map((s) => {
+                    const at = picked.indexOf(s.id);
+                    return (
+                      <li key={s.id} className="border-b border-rule last:border-b-0">
+                        <label className={cn("flex cursor-pointer items-center gap-3 px-3 py-2.5", at >= 0 && "bg-marker-soft/50")}>
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-[var(--marker-fill)]"
+                            checked={at >= 0}
+                            onChange={(e) => setPicked((p) => (e.target.checked ? [...p, s.id] : p.filter((x) => x !== s.id)))}
+                          />
+                          <span className="numerals w-7 text-[11px] text-ink-subtle">{at >= 0 ? String(at + 1).padStart(2, "0") : "··"}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[15px]">{s.name}</span>
+                            <span className="block text-[13px] italic text-ink-muted">
+                              <CountryLabel code={s.country} name={s.countryName} /> · {plural(s.plots, "plot")} mapped
+                            </span>
                           </span>
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ol>
               )}
             </div>
             {errors.supplierIds ? (
-              <p role="alert" className="text-xs text-noncompliant-fg">
-                {errors.supplierIds}
+              <p role="alert" className="flex items-center gap-1.5 text-[13px] text-noncompliant-fg">
+                <Glyph tone="noncompliant" size={8} /> {errors.supplierIds}
               </p>
             ) : (
-              <p className="text-xs text-muted">{picked.length} selected. Each supplier gets their own upload link.</p>
+              <p className="text-[13.5px] italic text-ink-muted">{plural(picked.length, "stop")} planned. Each supplier gets their own upload link.</p>
             )}
           </fieldset>
           <DialogFooter>
@@ -145,12 +143,42 @@ function StartCampaignDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               <Button>Cancel</Button>
             </DialogClose>
             <Button type="submit" variant="primary" loading={create.isPending}>
-              Start campaign
+              Start the route
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ── A campaign drawn as a route line: one stop per supplier ────────────────── */
+function RouteLine({ c }: { c: CampaignListItem }) {
+  const waiting = Math.max(0, c.suppliers - c.approved - c.awaitingReview - c.overdue);
+  const stops: Tone[] = [
+    ...Array<Tone>(c.approved).fill("compliant"),
+    ...Array<Tone>(c.awaitingReview).fill("review"),
+    ...Array<Tone>(waiting).fill("pending"),
+    ...Array<Tone>(c.overdue).fill("noncompliant"),
+  ];
+  return (
+    <ol className="flex items-center" aria-label={`${c.approved} approved, ${c.awaitingReview} awaiting review, ${waiting} on the way, ${c.overdue} overdue`}>
+      {stops.map((t, i) => (
+        <li key={i} className="flex flex-1 items-center last:flex-none">
+          <span className="ink-in" style={{ animationDelay: `${i * 70}ms` }}>
+            <Glyph tone={t} size={14} />
+          </span>
+          {i < stops.length - 1 ? <span aria-hidden className={cn("mx-1.5 h-0 flex-1 border-t-2", t === "compliant" ? "border-ink" : "border-dashed border-rule-strong")} /> : null}
+        </li>
+      ))}
+      <li aria-hidden className="ml-3 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] text-marker-ink">
+        <svg viewBox="0 0 10 14" className="h-3.5 w-2.5">
+          <path d="M1.5 13V1" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M1.5 1 9 3.2 1.5 5.4Z" fill="var(--marker)" />
+        </svg>
+        Due
+      </li>
+    </ol>
   );
 }
 
@@ -161,12 +189,13 @@ export default function CampaignsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Campaigns"
-        description="Collect plot data from many suppliers at once, with automatic reminders and your approval at the end."
+        eyebrow="Routes · Campaigns"
+        title="Data request routes"
+        description="Each campaign is a route through your suppliers. A stop is reached when the supplier has sent plots and you approve them."
         actions={
           can("campaigns:write") ? (
             <Button variant="primary" onClick={() => setOpen(true)}>
-              <Plus /> Start a campaign
+              <Plus /> Plan a route
             </Button>
           ) : null
         }
@@ -174,49 +203,58 @@ export default function CampaignsPage() {
       {q.isPending ? (
         <LoadingBlock rows={3} />
       ) : q.isError ? (
-        <Card>
-          <ErrorState error={q.error} onRetry={() => q.refetch()} />
-        </Card>
+        <ErrorState error={q.error} onRetry={() => q.refetch()} />
       ) : !q.data.length ? (
-        <Card>
-          <EmptyState icon={<Megaphone />} title="No campaigns yet" body="Start one to request plot data from your suppliers before the deadline." />
-        </Card>
+        <EmptyState title="No routes planned" body="Plan one to request plot data from your suppliers before the deadline." />
       ) : (
-        <ul className="grid gap-3">
-          {q.data.map((c) => {
-            const left = daysUntil(c.dueDate);
+        <ol className="grid border-t border-ink/60">
+          {q.data.map((c, i) => {
+            const running = c.status === "running";
+            const late = running && daysUntil(c.dueDate) < 0;
             return (
-              <li key={c.id}>
-                <Link href={`/app/campaigns/${c.id}`} className="block rounded-lg border border-border bg-surface p-4 outline-none transition-colors duration-150 hover:border-border-strong focus-visible:ring-2 focus-visible:ring-ring sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-[15px] font-semibold">{c.name}</h2>
-                        <CampaignStatusBadge status={c.status} />
-                      </div>
-                      <p className="mt-1 text-[13px] text-muted">
-                        {commodityLabel(c.commodity)} · {c.suppliers} suppliers · due {date(c.dueDate)}
-                        {c.status === "running" ? (left >= 0 ? ` (${left} days left)` : " (past due)") : ""}
-                      </p>
+              <li key={c.id} className="ink-in" style={{ animationDelay: `${i * 35}ms` }}>
+                <Link href={`/app/campaigns/${c.id}`} className="grid gap-4 border-b border-rule px-1 py-5 outline-none transition-colors hover:bg-sheet-2/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[minmax(0,1fr)_9rem]">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="numerals text-[11px] text-ink-subtle">ROUTE {String(i + 1).padStart(2, "0")}</span>
+                      <h2 className="text-[21px] font-medium leading-tight tracking-[-0.01em]">{c.name}</h2>
+                      <CampaignStatusBadge status={c.status} />
                     </div>
-                    <ChevronRight className="size-4 text-subtle" aria-hidden />
+                    <p className="mt-1 text-[14.5px] italic text-ink-muted">
+                      {commodityLabel(c.commodity)} · {plural(c.suppliers, "stop")} · started {stampDate(c.createdAt).toLowerCase()}
+                    </p>
+                    <div className="mt-4">
+                      <RouteLine c={c} />
+                    </div>
+                    <p className="numerals mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] uppercase text-ink-muted">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Glyph tone="compliant" size={9} /> {c.approved} approved
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Glyph tone="review" size={9} /> {c.awaitingReview} awaiting review
+                      </span>
+                      <span className={cn("inline-flex items-center gap-1.5", c.overdue > 0 && "text-noncompliant-fg")}>
+                        <Glyph tone="noncompliant" size={9} /> {c.overdue} overdue
+                      </span>
+                    </p>
                   </div>
-                  <div className="mt-4 flex items-center gap-3">
-                    <Meter value={c.progressPct} tone="compliant" className="flex-1" label={`${c.name} progress`} />
-                    <span className="w-10 text-right text-sm font-semibold tabular">{pct(c.progressPct)}</span>
+                  <div className="flex items-start gap-4 sm:flex-col sm:items-end sm:text-right">
+                    <span className={cn("inline-flex items-stretch border font-mono text-[11px] font-medium uppercase tracking-[0.08em]", late ? "border-noncompliant" : "border-ink")}>
+                      <span className={cn("numerals px-2 py-1", late ? "bg-noncompliant text-paper" : "bg-ink text-paper")}>{running ? dMinus(c.dueDate) : "Closed"}</span>
+                      <span className="numerals px-2 py-1">{stampDate(c.dueDate)}</span>
+                    </span>
+                    <span className="numerals text-[28px] leading-none">
+                      {c.progressPct}
+                      <span className="text-[14px] text-ink-muted">%</span>
+                    </span>
                   </div>
-                  <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                    <span>{c.approved} approved</span>
-                    <span>{c.awaitingReview} awaiting review</span>
-                    <span className={cn(c.overdue > 0 && "font-medium text-noncompliant-fg")}>{c.overdue} overdue</span>
-                  </p>
                 </Link>
               </li>
             );
           })}
-        </ul>
+        </ol>
       )}
-      <StartCampaignDialog open={open} onOpenChange={setOpen} />
+      <PlanRouteDialog open={open} onOpenChange={setOpen} />
     </PageContainer>
   );
 }
